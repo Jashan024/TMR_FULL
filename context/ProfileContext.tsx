@@ -1,18 +1,23 @@
+
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import type { UserProfile } from '../types';
+import { supabase } from '../lib/supabaseClient';
 
 interface ProfileContextType {
   profile: UserProfile | null;
-  setProfile: (profile: UserProfile | null) => void;
+  updateProfile: (profileData: Partial<UserProfile>) => Promise<UserProfile>;
   isProfileCreated: boolean;
   loading: boolean;
+  error: string | null;
 }
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
 
-// This mock data would be replaced by a real API response.
-const mockProfile: UserProfile = {
-    photoUrl: '',
+// This mock data is a fallback for when Supabase isn't configured.
+const fallbackProfile: UserProfile = {
+    id: 'fallback-user',
+    photo_url: '',
     name: "Alex Doe",
     title: "Senior Frontend Engineer",
     industry: 'IT',
@@ -21,44 +26,92 @@ const mockProfile: UserProfile = {
     location: "Remote, USA",
     skills: ["React", "TypeScript", "Node.js", "Figma", "Tailwind CSS", "UI/UX Design", "Next.js"],
     bio: "Passionate Senior Frontend Engineer with over 8 years of experience building beautiful, responsive, and user-centric web applications. My goal is to create interfaces that are not only functional but also a delight to use.",
-    certifications: [],
-    portfolioUrl: '',
+    certifications: ["AWS Certified Developer"],
+    portfolio_url: 'https://example.com',
 };
 
 export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true); // Start in a loading state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  const isProfileCreated = profile !== null;
+  const isProfileCreated = !!profile?.name; // Check for a key field like name
 
-  // Simulate fetching data from a backend API on component mount
   useEffect(() => {
-    setLoading(true);
-    // In a real app, this would be an API call, e.g., fetch('/api/user/profile')
-    const fetchProfile = async () => {
-      try {
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1500)); 
-        // On successful fetch, set the profile. For now, we use mock data.
-        // If there was no user logged in, this would remain null.
-        // For the demo, we assume the user is "logged in" and has a profile.
-        setProfile(mockProfile); 
-      } catch (error) {
-        console.error("Failed to fetch profile:", error);
-        // Handle error state, maybe show a toast notification
-      } finally {
+    // If Supabase is not configured, use fallback data and exit.
+    if (!supabase) {
+        setProfile(fallbackProfile);
         setLoading(false);
-      }
-    };
+        return;
+    }
 
-    fetchProfile();
+    // In Supabase v2, `onAuthStateChange` returns an object containing the subscription.
+    const authListener = supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (session) {
+            setLoading(true);
+            setError(null);
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+
+            if (error && error.code !== 'PGRST116') { // PGRST116: row not found
+                console.error("Error fetching profile:", error);
+                setError('Failed to fetch profile.');
+            } else {
+                setProfile(data);
+            }
+        } else {
+            setProfile(null);
+        }
+        setLoading(false);
+    });
+
+    return () => {
+        // FIX: The unsubscribe method is on the subscription object, nested inside the returned listener object in Supabase v2.
+        authListener.data.subscription?.unsubscribe();
+    };
   }, []);
+  
+  const updateProfile = async (profileData: Partial<UserProfile>): Promise<UserProfile> => {
+      if (!supabase) {
+          console.warn("Supabase not configured. Simulating profile update.");
+          const updatedProfile = { ...(profile || fallbackProfile), ...profileData };
+          setProfile(updatedProfile);
+          return updatedProfile;
+      }
+
+      // FIX: The `user()` method is from Supabase v1; v2 uses `getUser()` which returns a promise.
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      const updatePayload = {
+          id: user.id,
+          ...profileData,
+      };
+
+      const { data, error } = await supabase
+          .from('profiles')
+          .upsert(updatePayload)
+          .select()
+          .single();
+
+      if (error) {
+          console.error("Error updating profile:", error);
+          throw error;
+      }
+
+      setProfile(data);
+      return data;
+  };
 
   const contextValue = {
     profile,
-    setProfile,
+    updateProfile,
     isProfileCreated,
     loading,
+    error,
   };
 
   return (

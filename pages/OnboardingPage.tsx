@@ -8,6 +8,7 @@ import Card from '../components/Card';
 import Modal from '../components/Modal';
 import { Input, Select, Textarea } from '../components/Input';
 import { UserIcon, BriefcaseIcon, BuildingOfficeIcon, CalendarDaysIcon, MapPinIcon, LinkIcon, TagIcon, AcademicCapIcon, CloseIcon, CameraIcon, UploadIcon } from '../components/Icons';
+import { supabase } from '../lib/supabaseClient';
 
 const ProgressBar: React.FC<{ step: number }> = ({ step }) => {
     const totalSteps = 3;
@@ -55,7 +56,7 @@ const TagInput: React.FC<TagInputProps> = ({ label, tags, setTags, placeholder, 
             <div className="relative flex flex-wrap items-center gap-2 p-2.5 bg-gray-700/50 border border-gray-600 rounded-lg focus-within:ring-2 focus-within:ring-cyan-500 focus-within:border-cyan-500 transform transition-all duration-300 focus-within:scale-[1.02]">
                 {/* FIX: Cast icon element to specify it accepts a className prop */}
                 {icon && <div className="pl-1 flex items-center pointer-events-none">{React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: 'w-5 h-5 text-gray-400' })}</div>}
-                {tags.map(tag => (
+                {(tags || []).map(tag => (
                     <span key={tag} className="flex items-center bg-cyan-500/20 text-cyan-300 text-sm font-medium px-2.5 py-1 rounded">
                         {tag}
                         <button type="button" onClick={() => removeTag(tag)} className="ml-1.5 text-cyan-200 hover:text-white">
@@ -87,6 +88,7 @@ const PhotoUploadForm: React.FC<{onUpload: (file: File) => void, onClose: () => 
         if(e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];
             setFile(selectedFile);
+            if (preview) URL.revokeObjectURL(preview);
             setPreview(URL.createObjectURL(selectedFile));
         }
     }
@@ -103,6 +105,7 @@ const PhotoUploadForm: React.FC<{onUpload: (file: File) => void, onClose: () => 
             const droppedFile = e.dataTransfer.files[0];
             if (droppedFile.type.startsWith('image/')) {
                 setFile(droppedFile);
+                if (preview) URL.revokeObjectURL(preview);
                 setPreview(URL.createObjectURL(droppedFile));
             } else {
                 alert("Please drop an image file.");
@@ -151,14 +154,15 @@ const PhotoUploadForm: React.FC<{onUpload: (file: File) => void, onClose: () => 
 }
 
 const OnboardingPage: React.FC = () => {
-    const { profile, setProfile, isProfileCreated } = useProfile();
+    const { profile, updateProfile, isProfileCreated } = useProfile();
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
-    const [formData, setFormData] = useState<UserProfile>({
-        photoUrl: '', name: '', title: '', industry: '', experience: '', location: '',
-        bio: '', skills: [], roles: [], certifications: [], portfolioUrl: ''
+    const [formData, setFormData] = useState<Partial<UserProfile>>({
+        photo_url: '', name: '', title: '', industry: '', experience: '', location: '',
+        bio: '', skills: [], roles: [], certifications: [], portfolio_url: ''
     });
 
     useEffect(() => {
@@ -174,26 +178,59 @@ const OnboardingPage: React.FC = () => {
         setFormData(prev => ({ ...prev, [name]: tags }));
     };
 
-    const handlePhotoUpload = (file: File) => {
-        if (file) {
-            // In a real app, you'd upload this file to a server and get a URL.
-            // For this demo, we'll use a local object URL for preview.
-            if (formData.photoUrl) {
-                URL.revokeObjectURL(formData.photoUrl); // Clean up previous object URL
-            }
-            const newPhotoUrl = URL.createObjectURL(file);
-            setFormData(prev => ({ ...prev, photoUrl: newPhotoUrl }));
+    const handlePhotoUpload = async (file: File) => {
+        if (!supabase) {
+            alert("Photo uploads are disabled: Supabase is not configured.");
+            setIsPhotoModalOpen(false);
+            return;
         }
-        setIsPhotoModalOpen(false);
+
+        if (!profile?.id) {
+            alert("You must be logged in to upload a photo.");
+            return;
+        }
+        
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${profile.id}/profile.${fileExt}`;
+
+        try {
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file, { upsert: true });
+
+            if (uploadError) throw uploadError;
+
+            const { data } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(filePath);
+
+            const newPhotoUrl = `${data.publicUrl}?t=${new Date().getTime()}`;
+            
+            await updateProfile({ photo_url: newPhotoUrl });
+
+        } catch (error) {
+            console.error("Error uploading photo:", error);
+            alert("Failed to upload photo.");
+        } finally {
+            setIsPhotoModalOpen(false);
+        }
     };
 
     const nextStep = () => setStep(s => Math.min(s + 1, 3));
     const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setProfile(formData);
-        navigate('/profile/me');
+        setIsSaving(true);
+        try {
+            await updateProfile(formData);
+            navigate('/profile/me');
+        } catch (error) {
+            console.error("Failed to update profile:", error);
+            alert("There was an error saving your profile. Please try again.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -218,8 +255,8 @@ const OnboardingPage: React.FC = () => {
                                         <div className="flex-shrink-0">
                                             <label className="block text-sm font-medium text-gray-300 mb-2 text-center sm:text-left">Profile Photo</label>
                                             <div className="relative group">
-                                                {formData.photoUrl ? (
-                                                     <img src={formData.photoUrl} alt="Profile" className="w-24 h-24 rounded-full object-cover border-4 border-gray-600"/>
+                                                {formData.photo_url ? (
+                                                     <img src={formData.photo_url} alt="Profile" className="w-24 h-24 rounded-full object-cover border-4 border-gray-600"/>
                                                 ): (
                                                     <div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center border-4 border-gray-600">
                                                         <UserIcon className="w-12 h-12 text-gray-500" />
@@ -256,10 +293,10 @@ const OnboardingPage: React.FC = () => {
                             )}
                             {step === 3 && (
                                 <>
-                                    <TagInput label="Top Skills" tags={formData.skills} setTags={handleTagsChange('skills')} placeholder="Add a skill and press Enter" icon={<TagIcon />} helperText="e.g., React, TypeScript, Surgical Procedures" />
-                                    <TagInput label="Target Roles" tags={formData.roles} setTags={handleTagsChange('roles')} placeholder="Add a role and press Enter" icon={<BriefcaseIcon />} helperText="e.g., Frontend Developer, Registered Nurse" />
-                                    <TagInput label="Certifications & Licenses" tags={formData.certifications} setTags={handleTagsChange('certifications')} placeholder="Add a certification and press Enter" icon={<AcademicCapIcon />} helperText="e.g., AWS Certified Developer, RN License" />
-                                    <Input label="Portfolio or Website URL" name="portfolioUrl" value={formData.portfolioUrl} onChange={handleChange} placeholder="https://github.com/your-profile" icon={<LinkIcon />} />
+                                    <TagInput label="Top Skills" tags={formData.skills || []} setTags={handleTagsChange('skills')} placeholder="Add a skill and press Enter" icon={<TagIcon />} helperText="e.g., React, TypeScript, Surgical Procedures" />
+                                    <TagInput label="Target Roles" tags={formData.roles || []} setTags={handleTagsChange('roles')} placeholder="Add a role and press Enter" icon={<BriefcaseIcon />} helperText="e.g., Frontend Developer, Registered Nurse" />
+                                    <TagInput label="Certifications & Licenses" tags={formData.certifications || []} setTags={handleTagsChange('certifications')} placeholder="Add a certification and press Enter" icon={<AcademicCapIcon />} helperText="e.g., AWS Certified Developer, RN License" />
+                                    <Input label="Portfolio or Website URL" name="portfolio_url" value={formData.portfolio_url} onChange={handleChange} placeholder="https://github.com/your-profile" icon={<LinkIcon />} />
                                 </>
                             )}
                         </div>
@@ -273,8 +310,8 @@ const OnboardingPage: React.FC = () => {
                                 </Button>
                             )}
                             {step === 3 && (
-                                <Button type="submit" variant="primary">
-                                    {isProfileCreated ? 'Save Changes' : 'Create Profile'}
+                                <Button type="submit" variant="primary" disabled={isSaving}>
+                                    {isSaving ? 'Saving...' : (isProfileCreated ? 'Save Changes' : 'Create Profile')}
                                 </Button>
                             )}
                         </div>

@@ -13,14 +13,14 @@ const LoadingSpinner: React.FC = () => (
 );
 
 export const PublicProfilePage: React.FC = () => {
-  const { profile, isProfileCreated, loading } = useProfile();
+  const { profile, isProfileCreated, loading, error } = useProfile();
   const { documents } = useDocuments();
   const navigate = useNavigate();
 
   const publicDocuments = documents.filter(doc => doc.visibility === 'public');
 
   useEffect(() => {
-      // Don't redirect while loading, wait until loading is finished
+      // Don't redirect while loading, wait until loading is finished and we confirm no profile exists.
       if (!loading && !isProfileCreated) {
           navigate('/onboarding');
       }
@@ -34,10 +34,14 @@ export const PublicProfilePage: React.FC = () => {
     );
   }
 
+  if (error) {
+      return <div className="text-center p-10 text-red-400">{error}</div>;
+  }
+
   if (!profile) {
-      // This state can be reached if loading is false but profile is still null
-      // (e.g., API error or user not found).
-      return <div className="text-center p-10">Could not load profile. Please try again later.</div>;
+      // This state can be reached if loading is false but profile is still null, before redirect happens.
+      // Or if there's no profile created yet for a logged-in user.
+      return <div className="text-center p-10">Redirecting to create your profile...</div>;
   }
 
   return (
@@ -53,17 +57,17 @@ export const PublicProfilePage: React.FC = () => {
                 </Button>
             </div>
             <div className="text-center">
-                {profile.photoUrl ? (
-                    <img src={profile.photoUrl} alt={profile.name} className="w-24 h-24 rounded-full object-cover mx-auto border-4 border-gray-600" />
+                {profile.photo_url ? (
+                    <img src={profile.photo_url} alt={profile.name} className="w-24 h-24 rounded-full object-cover mx-auto border-4 border-gray-600" />
                 ) : (
                     <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center text-5xl font-bold text-cyan-400 mx-auto border-4 border-gray-600">
-                        {profile.name.charAt(0)}
+                        {profile.name?.charAt(0)}
                     </div>
                 )}
                 <h1 className="text-4xl font-bold text-white mt-4">{profile.name}</h1>
                 <p className="text-xl text-gray-300">{profile.title}</p>
-                {profile.portfolioUrl && (
-                     <a href={profile.portfolioUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center text-cyan-400 hover:text-cyan-300 transition-colors">
+                {profile.portfolio_url && (
+                     <a href={profile.portfolio_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center text-cyan-400 hover:text-cyan-300 transition-colors">
                          <LinkIcon className="w-5 h-5 mr-2" />
                          <span>Portfolio / Website</span>
                      </a>
@@ -86,7 +90,7 @@ export const PublicProfilePage: React.FC = () => {
               </h2>
               <div className="space-y-3">
                   {publicDocuments.map(doc => (
-                      <a href="#" key={doc.id} className="flex items-center p-3 rounded-lg hover:bg-gray-700/50 transition-colors group">
+                      <a href={doc.public_url || '#'} key={doc.id} target="_blank" rel="noopener noreferrer" className="flex items-center p-3 rounded-lg hover:bg-gray-700/50 transition-colors group">
                           <DocumentIcon className="w-6 h-6 text-gray-400 group-hover:text-cyan-400" />
                           <span className="ml-4 font-medium text-gray-200">{doc.name}</span>
                           <span className="ml-auto text-sm text-gray-500">{doc.size}</span>

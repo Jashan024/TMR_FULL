@@ -3,15 +3,31 @@ import { NavLink } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
 import { CloseIcon, MenuIcon } from './Icons';
 
-const Avatar: React.FC<{ photoUrl: string; name: string; size?: string }> = ({ photoUrl, name, size = 'h-9 w-9' }) => {
-    return photoUrl ? (
-      <img src={photoUrl} alt={name} className={`${size} rounded-full object-cover`} />
+const Avatar: React.FC<{ photo_url: string; name: string; size?: string }> = ({ photo_url, name, size = 'h-9 w-9' }) => {
+    return photo_url ? (
+      <img src={photo_url} alt={name} className={`${size} rounded-full object-cover`} />
     ) : (
       <div className={`${size} bg-gray-700 rounded-full flex items-center justify-center text-sm font-bold text-cyan-400`}>
-        {name.charAt(0)}
+        {name ? name.charAt(0) : '?'}
       </div>
     );
 };
+
+const NavItem: React.FC<{ to: string, children: React.ReactNode, isComingSoon?: boolean, baseStyle: string, activeStyle: string, mobileStyle?: string, onClick?: () => void }> = ({ to, children, isComingSoon, baseStyle, activeStyle, mobileStyle, onClick }) => {
+    return (
+        <NavLink to={to} onClick={onClick} className={({ isActive }) => `${mobileStyle || ''} ${baseStyle} ${isActive ? activeStyle : ''}`}>
+            <span className="relative">
+                {children}
+                {isComingSoon && (
+                    <span className="absolute -top-1.5 -right-6 bg-cyan-900/80 text-cyan-300 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-cyan-700">
+                        SOON
+                    </span>
+                )}
+            </span>
+        </NavLink>
+    )
+}
+
 
 const Header: React.FC = () => {
     const { profile } = useProfile();
@@ -29,15 +45,15 @@ const Header: React.FC = () => {
                 </NavLink>
                 
                 <nav className="hidden md:flex items-center space-x-8">
-                    <NavLink to="/jobs" className={({ isActive }) => `${baseLinkStyle} ${isActive ? activeLinkStyle : ''}`}>Find Jobs</NavLink>
-                    <NavLink to="/documents" className={({ isActive }) => `${baseLinkStyle} ${isActive ? activeLinkStyle : ''}`}>Documents</NavLink>
-                    <NavLink to="/profile/me" className={({ isActive }) => `${baseLinkStyle} ${isActive ? activeLinkStyle : ''}`}>Public Profile</NavLink>
+                    <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Find Jobs</NavItem>
+                    <NavItem to="/documents" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Documents</NavItem>
+                    <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Public Profile</NavItem>
                 </nav>
 
                 <div className="flex items-center space-x-4">
                     {profile && (
                         <div className="flex items-center space-x-3">
-                            <Avatar photoUrl={profile.photoUrl} name={profile.name} />
+                            <Avatar photo_url={profile.photo_url} name={profile.name} />
                             <span className="hidden sm:inline font-medium text-gray-200">{profile.name}</span>
                         </div>
                     )}
@@ -57,9 +73,9 @@ const Header: React.FC = () => {
             {/* Mobile Menu */}
             <div className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${isMenuOpen ? 'max-h-96 border-t border-gray-800' : 'max-h-0'}`}>
                 <nav className="px-6 pb-4 pt-2 flex flex-col space-y-1">
-                    <NavLink to="/jobs" onClick={() => setIsMenuOpen(false)} className={({ isActive }) => `${mobileLinkStyle} ${baseLinkStyle} ${isActive ? activeLinkStyle : ''}`}>Find Jobs</NavLink>
-                    <NavLink to="/documents" onClick={() => setIsMenuOpen(false)} className={({ isActive }) => `${mobileLinkStyle} ${baseLinkStyle} ${isActive ? activeLinkStyle : ''}`}>Documents</NavLink>
-                    <NavLink to="/profile/me" onClick={() => setIsMenuOpen(false)} className={({ isActive }) => `${mobileLinkStyle} ${baseLinkStyle} ${isActive ? activeLinkStyle : ''}`}>Public Profile</NavLink>
+                    <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Find Jobs</NavItem>
+                    <NavItem to="/documents" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Documents</NavItem>
+                    <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Public Profile</NavItem>
                 </nav>
             </div>
         </header>

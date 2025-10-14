@@ -8,12 +8,18 @@ import ToggleSwitch from '../components/ToggleSwitch';
 import { DocumentIcon, UploadIcon } from '../components/Icons';
 
 const DocumentItem: React.FC<{ doc: DocumentFile }> = ({ doc }) => {
-    const { documents, setDocuments } = useDocuments();
+    const { updateDocument, deleteDocument } = useDocuments();
 
     const handleVisibilityToggle = (isChecked: boolean) => {
         const newVisibility = isChecked ? 'public' : 'private';
-        setDocuments(documents.map(d => d.id === doc.id ? { ...d, visibility: newVisibility } : d));
+        updateDocument(doc.id, { visibility: newVisibility });
     };
+
+    const handleDelete = () => {
+        if (window.confirm(`Are you sure you want to delete ${doc.name}?`)) {
+            deleteDocument(doc.id);
+        }
+    }
     
     return (
         <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-gray-700 last:border-b-0 hover:bg-gray-800/50 transition-colors">
@@ -35,15 +41,18 @@ const DocumentItem: React.FC<{ doc: DocumentFile }> = ({ doc }) => {
                         onChange={handleVisibilityToggle}
                     />
                  </div>
-                 <button className="text-sm font-medium text-red-500 hover:text-red-400 transition-colors">Delete</button>
+                 <button onClick={handleDelete} className="text-sm font-medium text-red-500 hover:text-red-400 transition-colors">Delete</button>
             </div>
         </div>
     )
 }
 
 const UploadDocumentForm: React.FC<{onClose: () => void}> = ({onClose}) => {
+    const { addDocument } = useDocuments();
     const [file, setFile] = useState<File | null>(null);
+    const [docType, setDocType] = useState<DocumentFile['type']>('Resume');
     const [isDragging, setIsDragging] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if(e.target.files) {
@@ -64,21 +73,42 @@ const UploadDocumentForm: React.FC<{onClose: () => void}> = ({onClose}) => {
         }
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if(!file) {
             alert("Please select a file.");
             return;
         }
-        console.log("Uploading file:", file.name);
-        alert(`${file.name} uploaded successfully!`);
-        onClose();
+        setIsUploading(true);
+        try {
+            await addDocument(file, docType);
+            onClose();
+        } catch (error) {
+            alert("Failed to upload document.");
+        } finally {
+            setIsUploading(false);
+        }
     }
     
     const dragDropClasses = isDragging ? 'border-cyan-500 bg-gray-800' : 'border-gray-600';
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
+             <div>
+                 <label htmlFor="doc-type" className="block text-sm font-medium text-gray-300 mb-2">
+                    Document Type
+                 </label>
+                 <select 
+                    id="doc-type" 
+                    value={docType}
+                    onChange={(e) => setDocType(e.target.value as DocumentFile['type'])}
+                    className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                >
+                    <option value="Resume">Resume</option>
+                    <option value="Cover Letter">Cover Letter</option>
+                    <option value="Portfolio">Portfolio</option>
+                 </select>
+            </div>
             <div 
                 className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors duration-300 ${dragDropClasses}`}
                 onDragEnter={(e) => handleDragEvents(e, true)}
@@ -95,7 +125,9 @@ const UploadDocumentForm: React.FC<{onClose: () => void}> = ({onClose}) => {
             </div>
             <div className="flex justify-end space-x-3 pt-2">
                  <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-                 <Button type="submit" variant="primary" disabled={!file}>Upload</Button>
+                 <Button type="submit" variant="primary" disabled={!file || isUploading}>
+                    {isUploading ? 'Uploading...' : 'Upload'}
+                 </Button>
             </div>
         </form>
     )
@@ -103,7 +135,7 @@ const UploadDocumentForm: React.FC<{onClose: () => void}> = ({onClose}) => {
 
 
 const DocumentsPage: React.FC = () => {
-  const { documents } = useDocuments();
+  const { documents, loading } = useDocuments();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
@@ -120,7 +152,11 @@ const DocumentsPage: React.FC = () => {
         </header>
         
         <Card className="overflow-hidden p-0">
-            {documents.length > 0 ? (
+            {loading ? (
+                 <div className="text-center p-10">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto"></div>
+                 </div>
+            ) : documents.length > 0 ? (
                 documents.map(doc => <DocumentItem key={doc.id} doc={doc} />)
             ) : (
                 <div className="text-center p-10">

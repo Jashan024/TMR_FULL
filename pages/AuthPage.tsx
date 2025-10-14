@@ -1,24 +1,74 @@
+
+
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { Input } from '../components/Input';
 import { EnvelopeIcon, LockClosedIcon, UserIcon } from '../components/Icons';
+import { supabase } from '../lib/supabaseClient';
+
+type AuthView = 'signin' | 'signup' | 'forgot_password';
 
 const AuthPage: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signup');
+    const [view, setView] = useState<AuthView>('signup');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [message, setMessage] = useState('');
     const navigate = useNavigate();
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // In a real app, you'd handle authentication here.
-        // For this demo, we'll just navigate to the onboarding page.
-        navigate('/onboarding');
+        
+        if (!supabase) {
+            setError("Authentication is unavailable: App is not connected to a backend service.");
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+        setMessage('');
+        
+        const form = e.target as HTMLFormElement;
+        const formData = new FormData(form);
+        const name = formData.get('name') as string;
+        const email = formData.get('email') as string;
+        const password = formData.get('password') as string;
+        
+        try {
+            if (view === 'signup') {
+                // FIX: The `signUp` method in Supabase v2 expects a single object with an `options` property for additional data.
+                const { error } = await supabase.auth.signUp(
+                    { email, password, options: { data: { full_name: name } } }
+                );
+                if (error) throw error;
+                setMessage('Check your email for a confirmation link to complete your registration.');
+            } else if (view === 'signin') {
+                // FIX: The method `signIn` is from Supabase v1; v2 uses `signInWithPassword`.
+                const { error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+                if (error) throw error;
+                navigate('/profile/me');
+            } else if (view === 'forgot_password') {
+                // FIX: The `api` namespace for auth methods was removed in Supabase v2.
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin, // URL to redirect to after password reset
+                });
+                if (error) throw error;
+                setMessage('Check your email for a password reset link.');
+            }
+        } catch (err: any) {
+            setError(err.message || 'An unexpected error occurred.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const tabButtonClasses = (tabName: 'signin' | 'signup') => 
         `w-1/2 py-3 text-center font-semibold transition-colors duration-300 rounded-t-lg ${
-            activeTab === tabName 
+            view === tabName 
                 ? 'text-white bg-gray-800/80' 
                 : 'text-gray-400 bg-gray-900/50 hover:bg-gray-800/60'
         }`;
@@ -34,39 +84,58 @@ const AuthPage: React.FC = () => {
             </header>
             <main className="w-full max-w-md mx-auto z-10 animate-fade-in-up">
                 <Card className="p-0 overflow-hidden">
-                    <div className="flex">
-                        <button onClick={() => setActiveTab('signup')} className={tabButtonClasses('signup')}>
-                            Sign Up
-                        </button>
-                        <button onClick={() => setActiveTab('signin')} className={tabButtonClasses('signin')}>
-                            Sign In
-                        </button>
-                    </div>
+                    {view !== 'forgot_password' && (
+                        <div className="flex">
+                            <button onClick={() => { setView('signup'); setError(''); setMessage(''); }} className={tabButtonClasses('signup')}>
+                                Sign Up
+                            </button>
+                            <button onClick={() => { setView('signin'); setError(''); setMessage(''); }} className={tabButtonClasses('signin')}>
+                                Sign In
+                            </button>
+                        </div>
+                    )}
 
                     <div className="p-8">
-                        {activeTab === 'signup' && (
+                        {error && <p className="mb-4 text-center text-red-400">{error}</p>}
+                        {message && <p className="mb-4 text-center text-green-400">{message}</p>}
+
+                        {view === 'signup' && (
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <h2 className="text-2xl font-bold text-center text-white">Create Your Account</h2>
                                 <Input label="Full Name" name="name" type="text" placeholder="Alex Doe" required icon={<UserIcon />} />
                                 <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} />
                                 <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} />
-                                <Button type="submit" variant="primary" className="w-full">
-                                    Create Account
+                                <Button type="submit" variant="primary" className="w-full" disabled={loading}>
+                                    {loading ? 'Creating Account...' : 'Create Account'}
                                 </Button>
                             </form>
                         )}
                         
-                        {activeTab === 'signin' && (
+                        {view === 'signin' && (
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <h2 className="text-2xl font-bold text-center text-white">Welcome Back</h2>
                                 <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} />
                                 <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} />
                                 <div className="text-right">
-                                    <a href="#" className="text-sm text-cyan-400 hover:underline">Forgot password?</a>
+                                    <button type="button" onClick={() => setView('forgot_password')} className="text-sm text-cyan-400 hover:underline">Forgot password?</button>
                                 </div>
-                                <Button type="submit" variant="primary" className="w-full">
-                                    Sign In
+                                <Button type="submit" variant="primary" className="w-full" disabled={loading}>
+                                    {loading ? 'Signing In...' : 'Sign In'}
                                 </Button>
+                            </form>
+                        )}
+
+                        {view === 'forgot_password' && (
+                             <form onSubmit={handleSubmit} className="space-y-6">
+                                <h2 className="text-2xl font-bold text-center text-white">Reset Password</h2>
+                                <p className="text-center text-sm text-gray-400">Enter your email and we'll send you a link to reset your password.</p>
+                                <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} />
+                                <Button type="submit" variant="primary" className="w-full" disabled={loading}>
+                                    {loading ? 'Sending...' : 'Send Reset Link'}
+                                </Button>
+                                <div className="text-center">
+                                    <button type="button" onClick={() => setView('signin')} className="text-sm text-cyan-400 hover:underline">Back to Sign In</button>
+                                </div>
                             </form>
                         )}
                     </div>
