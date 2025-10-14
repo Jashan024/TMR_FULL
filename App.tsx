@@ -1,0 +1,51 @@
+
+import React from 'react';
+import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { ProfileProvider } from './context/ProfileContext';
+import { DocumentProvider } from './context/DocumentContext';
+import LandingPage from './pages/LandingPage';
+import OnboardingPage from './pages/OnboardingPage';
+import { PublicProfilePage } from './pages/PublicProfilePage';
+import DocumentsPage from './pages/DocumentsPage';
+import JobSearchPage from './pages/JobSearchPage';
+import RecruitersPage from './pages/RecruitersPage';
+import RecruiterConfirmationPage from './pages/RecruiterConfirmationPage';
+import Header from './components/Header';
+import AuthPage from './pages/AuthPage';
+
+const AppContent: React.FC = () => {
+    const location = useLocation();
+    const showHeader = !['/', '/recruiters', '/auth', '/recruiters/thank-you'].includes(location.pathname);
+
+    return (
+        <>
+            {showHeader && <Header />}
+            <main>
+                <Routes>
+                    <Route path="/" element={<LandingPage />} />
+                    <Route path="/auth" element={<AuthPage />} />
+                    <Route path="/onboarding" element={<OnboardingPage />} />
+                    <Route path="/profile/:userId" element={<PublicProfilePage />} />
+                    <Route path="/documents" element={<DocumentsPage />} />
+                    <Route path="/jobs" element={<JobSearchPage />} />
+                    <Route path="/recruiters" element={<RecruitersPage />} />
+                    <Route path="/recruiters/thank-you" element={<RecruiterConfirmationPage />} />
+                </Routes>
+            </main>
+        </>
+    );
+};
+
+const App: React.FC = () => {
+  return (
+    <ProfileProvider>
+      <DocumentProvider>
+        <HashRouter>
+            <AppContent />
+        </HashRouter>
+      </DocumentProvider>
+    </ProfileProvider>
+  );
+};
+
+export default App;
