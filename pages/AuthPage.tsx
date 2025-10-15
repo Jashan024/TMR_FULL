@@ -1,12 +1,12 @@
 
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { Input } from '../components/Input';
 import { EnvelopeIcon, LockClosedIcon, UserIcon } from '../components/Icons';
 import { supabase } from '../lib/supabaseClient';
+import { useProfile } from '../context/ProfileContext';
 
 type AuthView = 'signin' | 'signup' | 'forgot_password';
 
@@ -16,6 +16,14 @@ const AuthPage: React.FC = () => {
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const navigate = useNavigate();
+    const { profile } = useProfile();
+
+    // If a user is already logged in (we have a profile), redirect them away from the auth page.
+    useEffect(() => {
+        if (profile?.id) {
+            navigate('/profile/me');
+        }
+    }, [profile, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -37,24 +45,30 @@ const AuthPage: React.FC = () => {
         
         try {
             if (view === 'signup') {
-                // FIX: The `signUp` method in Supabase v2 expects a single object with an `options` property for additional data.
-                const { error } = await supabase.auth.signUp(
+                const { data, error } = await supabase.auth.signUp(
                     { email, password, options: { data: { full_name: name } } }
                 );
                 if (error) throw error;
-                setMessage('Check your email for a confirmation link to complete your registration.');
+                
+                if (data.session) {
+                    // If Supabase logs the user in automatically (email confirmation is off),
+                    // navigate them to start building their profile.
+                    navigate('/onboarding');
+                } else {
+                    setMessage('Check your email for a confirmation link to complete your registration.');
+                }
             } else if (view === 'signin') {
-                // FIX: The method `signIn` is from Supabase v1; v2 uses `signInWithPassword`.
                 const { error } = await supabase.auth.signInWithPassword({
                     email,
                     password,
                 });
                 if (error) throw error;
+                // A successful sign-in will trigger the onAuthStateChange listener in ProfileContext.
+                // The useEffect hook will then redirect the user. We can also navigate explicitly for a faster UX.
                 navigate('/profile/me');
             } else if (view === 'forgot_password') {
-                // FIX: The `api` namespace for auth methods was removed in Supabase v2.
                 const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: window.location.origin, // URL to redirect to after password reset
+                    redirectTo: window.location.href, // Use current URL to work correctly with HashRouter
                 });
                 if (error) throw error;
                 setMessage('Check your email for a password reset link.');
