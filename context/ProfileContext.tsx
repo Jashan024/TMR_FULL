@@ -1,10 +1,12 @@
 
 
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect, useRef } from 'react';
 import type { UserProfile } from '../types';
 import { supabase } from '../lib/supabaseClient';
+import type { Session } from '@supabase/supabase-js';
 
 interface ProfileContextType {
+  session: Session | null;
   profile: UserProfile | null;
   updateProfile: (profileData: Partial<UserProfile>) => Promise<UserProfile>;
   isProfileCreated: boolean;
@@ -31,9 +33,13 @@ const fallbackProfile: UserProfile = {
 };
 
 export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use a ref to track the current user ID to avoid stale closures and unnecessary loading state changes.
+  const currentUserIdRef = useRef<string | null>(null);
   
   const isProfileCreated = !!profile?.name; // Check for a key field like name
 
@@ -45,22 +51,35 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         return;
     }
 
-    // In Supabase v2, `onAuthStateChange` returns an object containing the subscription.
-    const authListener = supabase.auth.onAuthStateChange(async (_event, session) => {
-        if (session) {
-            setLoading(true);
-            setError(null);
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+        const newUserId = newSession?.user?.id ?? null;
 
-            if (error && error.code !== 'PGRST116') { // PGRST116: row not found
+        // Only trigger a full loading state if the user's identity has actually changed (login/logout).
+        // This prevents loading spinners on non-critical events like token refreshes.
+        if (newUserId !== currentUserIdRef.current) {
+            setLoading(true);
+        }
+
+        setSession(newSession);
+        currentUserIdRef.current = newUserId;
+
+        if (newSession) {
+            setError(null);
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', newSession.user.id)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') { // PGRST116: row not found
+                    throw error;
+                }
+                setProfile(data);
+            } catch (error) {
                 console.error("Error fetching profile:", error);
                 setError('Failed to fetch profile.');
-            } else {
-                setProfile(data);
+                setProfile(null);
             }
         } else {
             setProfile(null);
@@ -69,8 +88,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
 
     return () => {
-        // FIX: The unsubscribe method is on the subscription object, nested inside the returned listener object in Supabase v2.
-        authListener.data.subscription?.unsubscribe();
+        authListener?.subscription.unsubscribe();
     };
   }, []);
   
@@ -82,7 +100,6 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
           return updatedProfile;
       }
 
-      // FIX: The `user()` method is from Supabase v1; v2 uses `getUser()` which returns a promise.
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
@@ -107,6 +124,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const contextValue = {
+    session,
     profile,
     updateProfile,
     isProfileCreated,

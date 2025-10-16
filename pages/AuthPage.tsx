@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Button from '../components/Button';
@@ -12,18 +11,20 @@ type AuthView = 'signin' | 'signup' | 'forgot_password';
 
 const AuthPage: React.FC = () => {
     const [view, setView] = useState<AuthView>('signup');
-    const [loading, setLoading] = useState(false);
+    const [formLoading, setFormLoading] = useState(false);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const navigate = useNavigate();
-    const { profile } = useProfile();
+    const { session, isProfileCreated, loading: profileLoading } = useProfile();
 
-    // If a user is already logged in (we have a profile), redirect them away from the auth page.
+    // If a user is already logged in, redirect them away from the auth page
+    // once we know their profile status.
     useEffect(() => {
-        if (profile?.id) {
-            navigate('/profile/me');
+        // Wait until the profile loading is complete before redirecting
+        if (session && !profileLoading) {
+            navigate(isProfileCreated ? '/profile/me' : '/onboarding');
         }
-    }, [profile, navigate]);
+    }, [session, isProfileCreated, profileLoading, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -33,7 +34,7 @@ const AuthPage: React.FC = () => {
             return;
         }
 
-        setLoading(true);
+        setFormLoading(true);
         setError('');
         setMessage('');
         
@@ -45,30 +46,38 @@ const AuthPage: React.FC = () => {
         
         try {
             if (view === 'signup') {
-                const { data, error } = await supabase.auth.signUp(
-                    { email, password, options: { data: { full_name: name } } }
-                );
+                const { data, error } = await supabase.auth.signUp({ 
+                    email, 
+                    password, 
+                    options: { data: { full_name: name } } 
+                });
+
                 if (error) throw error;
                 
-                if (data.session) {
-                    // If Supabase logs the user in automatically (email confirmation is off),
-                    // navigate them to start building their profile.
-                    navigate('/onboarding');
-                } else {
+                // On successful sign-up, the onAuthStateChange listener will handle setting the session
+                // and the useEffect hook above will trigger the redirect.
+                // We only need to show a message if email confirmation is required.
+                if (data.user && !data.session) {
                     setMessage('Check your email for a confirmation link to complete your registration.');
                 }
             } else if (view === 'signin') {
-                const { error } = await supabase.auth.signInWithPassword({
+                const { data, error } = await supabase.auth.signInWithPassword({
                     email,
                     password,
                 });
                 if (error) throw error;
-                // A successful sign-in will trigger the onAuthStateChange listener in ProfileContext.
-                // The useEffect hook will then redirect the user. We can also navigate explicitly for a faster UX.
-                navigate('/profile/me');
+                
+                if (!data.session) {
+                    throw new Error('Sign in failed, please try again.');
+                }
+                // On successful sign-in, the onAuthStateChange listener will fire, which updates the
+                // `session` state. The useEffect hook at the top of this component will then handle redirection.
+                
             } else if (view === 'forgot_password') {
                 const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: window.location.href, // Use current URL to work correctly with HashRouter
+                    // This path should point to where your app will handle the password update.
+                    // For now, it redirects back to the auth page. You might want a dedicated reset page.
+                    redirectTo: `${window.location.origin}/#/auth`,
                 });
                 if (error) throw error;
                 setMessage('Check your email for a password reset link.');
@@ -76,7 +85,7 @@ const AuthPage: React.FC = () => {
         } catch (err: any) {
             setError(err.message || 'An unexpected error occurred.');
         } finally {
-            setLoading(false);
+            setFormLoading(false);
         }
     };
 
@@ -119,8 +128,8 @@ const AuthPage: React.FC = () => {
                                 <Input label="Full Name" name="name" type="text" placeholder="Alex Doe" required icon={<UserIcon />} />
                                 <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} />
                                 <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} />
-                                <Button type="submit" variant="primary" className="w-full" disabled={loading}>
-                                    {loading ? 'Creating Account...' : 'Create Account'}
+                                <Button type="submit" variant="primary" className="w-full" loading={formLoading}>
+                                    {formLoading ? 'Creating Account...' : 'Create Account'}
                                 </Button>
                             </form>
                         )}
@@ -133,8 +142,8 @@ const AuthPage: React.FC = () => {
                                 <div className="text-right">
                                     <button type="button" onClick={() => setView('forgot_password')} className="text-sm text-cyan-400 hover:underline">Forgot password?</button>
                                 </div>
-                                <Button type="submit" variant="primary" className="w-full" disabled={loading}>
-                                    {loading ? 'Signing In...' : 'Sign In'}
+                                <Button type="submit" variant="primary" className="w-full" loading={formLoading}>
+                                    {formLoading ? 'Signing In...' : 'Sign In'}
                                 </Button>
                             </form>
                         )}
@@ -144,8 +153,8 @@ const AuthPage: React.FC = () => {
                                 <h2 className="text-2xl font-bold text-center text-white">Reset Password</h2>
                                 <p className="text-center text-sm text-gray-400">Enter your email and we'll send you a link to reset your password.</p>
                                 <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} />
-                                <Button type="submit" variant="primary" className="w-full" disabled={loading}>
-                                    {loading ? 'Sending...' : 'Send Reset Link'}
+                                <Button type="submit" variant="primary" className="w-full" loading={formLoading}>
+                                    {formLoading ? 'Sending...' : 'Send Reset Link'}
                                 </Button>
                                 <div className="text-center">
                                     <button type="button" onClick={() => setView('signin')} className="text-sm text-cyan-400 hover:underline">Back to Sign In</button>
