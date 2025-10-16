@@ -45,9 +45,10 @@ const Header: React.FC = () => {
         const { error } = await supabase.auth.signOut();
         if (error) {
             console.error('Error logging out:', error.message);
-        } else {
-            navigate('/');
         }
+        // Always navigate to the home page after attempting to sign out.
+        // The onAuthStateChange listener will handle clearing the profile state.
+        navigate('/');
     };
     
     const baseLinkStyle = "relative text-gray-300 hover:text-white transition-colors duration-200 py-2";

@@ -1,6 +1,4 @@
-
-
-import React, { createContext, useState, useContext, ReactNode, useEffect, useRef } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect, useRef, useCallback } from 'react';
 import type { UserProfile } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import type { Session } from '@supabase/supabase-js';
@@ -92,12 +90,16 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
   }, []);
   
-  const updateProfile = async (profileData: Partial<UserProfile>): Promise<UserProfile> => {
+  const updateProfile = useCallback(async (profileData: Partial<UserProfile>): Promise<UserProfile> => {
       if (!supabase) {
           console.warn("Supabase not configured. Simulating profile update.");
-          const updatedProfile = { ...(profile || fallbackProfile), ...profileData };
-          setProfile(updatedProfile);
-          return updatedProfile;
+          return new Promise(resolve => {
+            setProfile(prevProfile => {
+              const updated = { ...(prevProfile || fallbackProfile), ...profileData } as UserProfile;
+              resolve(updated);
+              return updated;
+            });
+          });
       }
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -118,10 +120,14 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
           console.error("Error updating profile:", error);
           throw error;
       }
+      
+      if (!data) {
+        throw new Error("Failed to update profile: no data was returned.");
+      }
 
       setProfile(data);
       return data;
-  };
+  }, []);
 
   const contextValue = {
     session,
