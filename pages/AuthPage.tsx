@@ -16,15 +16,17 @@ const AuthPage: React.FC = () => {
     const [message, setMessage] = useState('');
     const navigate = useNavigate();
     const { session, isProfileCreated, loading: profileLoading } = useProfile();
+    const userId = session?.user?.id;
 
     // If a user is already logged in, redirect them away from the auth page
     // once we know their profile status.
     useEffect(() => {
-        // Wait until the profile loading is complete before redirecting
-        if (session && !profileLoading) {
+        // Wait until the profile loading is complete before redirecting.
+        // Depend on the stable `userId` instead of the `session` object to prevent loops on token refresh.
+        if (userId && !profileLoading) {
             navigate(isProfileCreated ? '/profile/me' : '/onboarding');
         }
-    }, [session, isProfileCreated, profileLoading, navigate]);
+    }, [userId, isProfileCreated, profileLoading, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
