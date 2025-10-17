@@ -18,6 +18,9 @@ const AuthPage: React.FC = () => {
     const { session, isProfileCreated, loading: profileLoading } = useProfile();
     const userId = session?.user?.id;
 
+    // This combined loading state handles both the form submission and the subsequent profile loading.
+    const isLoading = formLoading || (!!userId && profileLoading);
+
     // If a user is already logged in, redirect them away from the auth page
     // once we know their profile status.
     useEffect(() => {
@@ -127,11 +130,11 @@ const AuthPage: React.FC = () => {
                         {view === 'signup' && (
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <h2 className="text-2xl font-bold text-center text-white">Create Your Account</h2>
-                                <Input label="Full Name" name="name" type="text" placeholder="Alex Doe" required icon={<UserIcon />} />
-                                <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} />
-                                <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} />
-                                <Button type="submit" variant="primary" className="w-full" loading={formLoading}>
-                                    {formLoading ? 'Creating Account...' : 'Create Account'}
+                                <Input label="Full Name" name="name" type="text" placeholder="Alex Doe" required icon={<UserIcon />} disabled={isLoading} />
+                                <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} disabled={isLoading} />
+                                <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} disabled={isLoading} />
+                                <Button type="submit" variant="primary" className="w-full" loading={isLoading}>
+                                    {isLoading ? 'Creating Account...' : 'Create Account'}
                                 </Button>
                             </form>
                         )}
@@ -139,13 +142,13 @@ const AuthPage: React.FC = () => {
                         {view === 'signin' && (
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <h2 className="text-2xl font-bold text-center text-white">Welcome Back</h2>
-                                <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} />
-                                <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} />
+                                <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} disabled={isLoading} />
+                                <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} disabled={isLoading} />
                                 <div className="text-right">
                                     <button type="button" onClick={() => setView('forgot_password')} className="text-sm text-cyan-400 hover:underline">Forgot password?</button>
                                 </div>
-                                <Button type="submit" variant="primary" className="w-full" loading={formLoading}>
-                                    {formLoading ? 'Signing In...' : 'Sign In'}
+                                <Button type="submit" variant="primary" className="w-full" loading={isLoading}>
+                                    {isLoading ? 'Signing In...' : 'Sign In'}
                                 </Button>
                             </form>
                         )}
@@ -154,9 +157,9 @@ const AuthPage: React.FC = () => {
                              <form onSubmit={handleSubmit} className="space-y-6">
                                 <h2 className="text-2xl font-bold text-center text-white">Reset Password</h2>
                                 <p className="text-center text-sm text-gray-400">Enter your email and we'll send you a link to reset your password.</p>
-                                <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} />
-                                <Button type="submit" variant="primary" className="w-full" loading={formLoading}>
-                                    {formLoading ? 'Sending...' : 'Send Reset Link'}
+                                <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} disabled={isLoading} />
+                                <Button type="submit" variant="primary" className="w-full" loading={isLoading}>
+                                    {isLoading ? 'Sending...' : 'Send Reset Link'}
                                 </Button>
                                 <div className="text-center">
                                     <button type="button" onClick={() => setView('signin')} className="text-sm text-cyan-400 hover:underline">Back to Sign In</button>

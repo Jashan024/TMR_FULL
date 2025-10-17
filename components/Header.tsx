@@ -54,9 +54,6 @@ const Header: React.FC = () => {
                     <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Find Jobs</NavItem>
                     <NavItem to="/documents" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Documents</NavItem>
                     <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Public Profile</NavItem>
-                    {profile && (
-                        <button onClick={handleLogout} className={baseLinkStyle}>Logout</button>
-                    )}
                 </nav>
 
                 <div className="flex items-center space-x-4">
@@ -85,17 +82,6 @@ const Header: React.FC = () => {
                     <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Find Jobs</NavItem>
                     <NavItem to="/documents" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Documents</NavItem>
                     <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Public Profile</NavItem>
-                    {profile && (
-                        <button
-                            onClick={() => {
-                                handleLogout();
-                                setIsMenuOpen(false);
-                            }}
-                            className="block py-2 text-left text-base text-gray-300 hover:text-white transition-colors duration-200"
-                        >
-                            Logout
-                        </button>
-                    )}
                 </nav>
             </div>
         </header>

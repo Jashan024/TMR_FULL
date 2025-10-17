@@ -113,9 +113,6 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         ...profileData,
     };
 
-    // By separating the upsert and select operations, we can better handle
-    // potential RLS policies that might allow writes but not subsequent reads,
-    // which can cause the combined operation to hang.
     const { error: upsertError } = await supabase
         .from('profiles')
         .upsert(updatePayload);
@@ -124,30 +121,19 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         console.error("Error upserting profile:", upsertError);
         throw upsertError;
     }
-    
-    // After a successful upsert, fetch the latest profile data to ensure
-    // the local state is in sync with the database.
-    const { data, error: selectError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-  
-    if (selectError) {
-      console.error("Error fetching profile after update:", selectError);
-      // If the fetch fails, we can still proceed with an optimistic update.
-      const updatedProfile = { ...(profile || {}), ...updatePayload } as UserProfile;
-      setProfile(updatedProfile);
-      return updatedProfile;
-    }
 
-    if (!data) {
-      throw new Error("Failed to find profile after update.");
-    }
+    // Optimistically update the local state. This makes the UI feel faster
+    // and avoids potential issues with RLS policies that might block a
+    // subsequent SELECT query. The `onAuthStateChange` listener will eventually
+    // sync the profile if the user reloads or logs back in.
+    const updatedProfile = {
+      ...(profile || {}),
+      ...updatePayload,
+     } as UserProfile;
 
-    setProfile(data);
-    return data;
-}, [profile]); // Add 'profile' to dependency array for optimistic update fallback.
+    setProfile(updatedProfile);
+    return updatedProfile;
+}, [profile]);
 
   const logout = useCallback(async () => {
     if (!supabase) {
