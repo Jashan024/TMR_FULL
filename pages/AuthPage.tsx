@@ -39,15 +39,30 @@ const AuthPage: React.FC = () => {
             return;
         }
 
-        setFormLoading(true);
-        setError('');
-        setMessage('');
-        
         const form = e.target as HTMLFormElement;
         const formData = new FormData(form);
         const name = formData.get('name') as string;
         const email = formData.get('email') as string;
         const password = formData.get('password') as string;
+        
+        setError('');
+        setMessage('');
+
+        // Add manual validation before setting loading state
+        if (view === 'signup' && (!name.trim() || !email.trim() || !password)) {
+            setError('Please fill in all fields to sign up.');
+            return;
+        }
+        if (view === 'signin' && (!email.trim() || !password)) {
+            setError('Please enter your email and password to sign in.');
+            return;
+        }
+        if (view === 'forgot_password' && !email.trim()) {
+            setError('Please enter your email address to reset your password.');
+            return;
+        }
+        
+        setFormLoading(true);
         
         try {
             if (view === 'signup') {
