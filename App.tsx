@@ -38,13 +38,13 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <ProfileProvider>
-      <DocumentProvider>
-        <HashRouter>
+    <HashRouter>
+      <ProfileProvider>
+        <DocumentProvider>
             <AppContent />
-        </HashRouter>
-      </DocumentProvider>
-    </ProfileProvider>
+        </DocumentProvider>
+      </ProfileProvider>
+    </HashRouter>
   );
 };
 

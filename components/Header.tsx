@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
 import { CloseIcon, MenuIcon } from './Icons';
 import { supabase } from '../lib/supabaseClient';
@@ -32,23 +32,11 @@ const NavItem: React.FC<{ to: string, children: React.ReactNode, isComingSoon?: 
 
 
 const Header: React.FC = () => {
-    const { profile } = useProfile();
+    const { profile, logout } = useProfile();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const navigate = useNavigate();
     
     const handleLogout = async () => {
-        if (!supabase) {
-            console.warn("Supabase not configured. Cannot log out.");
-            navigate('/');
-            return;
-        }
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-            console.error('Error logging out:', error.message);
-        }
-        // Always navigate to the home page after attempting to sign out.
-        // The onAuthStateChange listener will handle clearing the profile state.
-        navigate('/');
+        await logout();
     };
     
     const baseLinkStyle = "relative text-gray-300 hover:text-white transition-colors duration-200 py-2";

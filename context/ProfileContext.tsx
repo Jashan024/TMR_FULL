@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { UserProfile } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import type { Session } from '@supabase/supabase-js';
@@ -7,6 +8,7 @@ interface ProfileContextType {
   session: Session | null;
   profile: UserProfile | null;
   updateProfile: (profileData: Partial<UserProfile>) => Promise<UserProfile>;
+  logout: () => Promise<void>;
   isProfileCreated: boolean;
   loading: boolean;
   error: string | null;
@@ -35,6 +37,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
   
   // Use a ref to track the current user ID to avoid stale closures and unnecessary loading state changes.
   const currentUserIdRef = useRef<string | null>(null);
@@ -91,48 +94,80 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, []);
   
   const updateProfile = useCallback(async (profileData: Partial<UserProfile>): Promise<UserProfile> => {
-      if (!supabase) {
-          console.warn("Supabase not configured. Simulating profile update.");
-          return new Promise(resolve => {
-            setProfile(prevProfile => {
-              const updated = { ...(prevProfile || fallbackProfile), ...profileData } as UserProfile;
-              resolve(updated);
-              return updated;
-            });
+    if (!supabase) {
+        console.warn("Supabase not configured. Simulating profile update.");
+        return new Promise(resolve => {
+          setProfile(prevProfile => {
+            const updated = { ...(prevProfile || fallbackProfile), ...profileData } as UserProfile;
+            resolve(updated);
+            return updated;
           });
-      }
+        });
+    }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
 
-      const updatePayload = {
-          id: user.id,
-          ...profileData,
-      };
+    const updatePayload = {
+        id: user.id,
+        ...profileData,
+    };
 
-      const { data, error } = await supabase
-          .from('profiles')
-          .upsert(updatePayload)
-          .select()
-          .single();
+    // By separating the upsert and select operations, we can better handle
+    // potential RLS policies that might allow writes but not subsequent reads,
+    // which can cause the combined operation to hang.
+    const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert(updatePayload);
 
+    if (upsertError) {
+        console.error("Error upserting profile:", upsertError);
+        throw upsertError;
+    }
+    
+    // After a successful upsert, fetch the latest profile data to ensure
+    // the local state is in sync with the database.
+    const { data, error: selectError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+  
+    if (selectError) {
+      console.error("Error fetching profile after update:", selectError);
+      // If the fetch fails, we can still proceed with an optimistic update.
+      const updatedProfile = { ...(profile || {}), ...updatePayload } as UserProfile;
+      setProfile(updatedProfile);
+      return updatedProfile;
+    }
+
+    if (!data) {
+      throw new Error("Failed to find profile after update.");
+    }
+
+    setProfile(data);
+    return data;
+}, [profile]); // Add 'profile' to dependency array for optimistic update fallback.
+
+  const logout = useCallback(async () => {
+    if (!supabase) {
+      console.warn("Supabase not configured. Cannot log out.");
+    } else {
+      const { error } = await supabase.auth.signOut();
       if (error) {
-          console.error("Error updating profile:", error);
-          throw error;
+        console.error('Error logging out:', error.message);
       }
-      
-      if (!data) {
-        throw new Error("Failed to update profile: no data was returned.");
-      }
-
-      setProfile(data);
-      return data;
-  }, []);
+    }
+    // The onAuthStateChange listener will clear the profile state.
+    // We manually navigate to ensure the user is redirected immediately.
+    navigate('/');
+  }, [navigate]);
 
   const contextValue = {
     session,
     profile,
     updateProfile,
+    logout,
     isProfileCreated,
     loading,
     error,
