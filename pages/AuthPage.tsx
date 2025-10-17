@@ -19,7 +19,7 @@ const AuthPage: React.FC = () => {
     const userId = session?.user?.id;
 
     // This combined loading state handles both the form submission and the subsequent profile loading.
-    const isLoading = formLoading || (!!userId && profileLoading);
+    const isLoading = formLoading || profileLoading;
 
     // If a user is already logged in, redirect them away from the auth page
     // once we know their profile status.
@@ -149,7 +149,7 @@ const AuthPage: React.FC = () => {
                                 <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} disabled={isLoading} />
                                 <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} disabled={isLoading} />
                                 <Button type="submit" variant="primary" className="w-full" loading={isLoading}>
-                                    {isLoading ? 'Creating Account...' : 'Create Account'}
+                                    {isLoading ? 'Verifying...' : 'Create Account'}
                                 </Button>
                             </form>
                         )}
