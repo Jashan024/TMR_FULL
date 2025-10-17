@@ -58,9 +58,11 @@ const Header: React.FC = () => {
 
                 <div className="flex items-center space-x-4">
                     {profile && (
-                        <div className="hidden md:flex items-center space-x-3">
+                        <div className="hidden md:flex items-center space-x-4">
                             <Avatar photo_url={profile.photo_url} name={profile.name} />
                             <span className="font-medium text-gray-200">{profile.name}</span>
+                            <span className="text-gray-600">|</span>
+                            <button onClick={handleLogout} className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Log Out</button>
                         </div>
                     )}
                      <div className="md:hidden">
@@ -82,6 +84,24 @@ const Header: React.FC = () => {
                     <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Find Jobs</NavItem>
                     <NavItem to="/documents" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Documents</NavItem>
                     <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Public Profile</NavItem>
+                    
+                    {profile && (
+                        <div className="pt-4 mt-2 border-t border-gray-700">
+                            <div className="flex items-center space-x-3 mb-4 px-1">
+                                <Avatar photo_url={profile.photo_url} name={profile.name} size="h-10 w-10" />
+                                <div>
+                                    <p className="font-medium text-white">{profile.name}</p>
+                                    <p className="text-sm text-gray-400">{profile.title}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => { handleLogout(); setIsMenuOpen(false); }}
+                                className="w-full text-left block py-2 px-3 text-base text-gray-300 rounded-md bg-gray-800/50 hover:bg-gray-700/80 hover:text-white transition-colors"
+                            >
+                                Log Out
+                            </button>
+                        </div>
+                    )}
                 </nav>
             </div>
         </header>

@@ -39,9 +39,6 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   
-  // Use a ref to track the current user ID to avoid stale closures and unnecessary loading state changes.
-  const currentUserIdRef = useRef<string | null>(null);
-  
   const isProfileCreated = !!profile?.name; // Check for a key field like name
 
   useEffect(() => {
@@ -52,17 +49,11 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         return;
     }
 
+    // Set loading to true initially to cover the first session check.
+    setLoading(true);
+
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-        const newUserId = newSession?.user?.id ?? null;
-
-        // Only trigger a full loading state if the user's identity has actually changed (login/logout).
-        // This prevents loading spinners on non-critical events like token refreshes.
-        if (newUserId !== currentUserIdRef.current) {
-            setLoading(true);
-        }
-
         setSession(newSession);
-        currentUserIdRef.current = newUserId;
 
         if (newSession) {
             setError(null);
@@ -85,6 +76,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         } else {
             setProfile(null);
         }
+        // Always set loading to false after processing the session change.
         setLoading(false);
     });
 
@@ -146,7 +138,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
     // The onAuthStateChange listener will clear the profile state.
     // We manually navigate to ensure the user is redirected immediately.
-    navigate('/');
+    navigate('/auth');
   }, [navigate]);
 
   const contextValue = {
