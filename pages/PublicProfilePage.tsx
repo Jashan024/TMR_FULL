@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
 import { useDocuments } from '../context/DocumentContext';
 import Card from '../components/Card';
@@ -38,10 +38,10 @@ const RecruiterAuthGate: React.FC<{ isOpen: boolean; profileName?: string | null
             To protect our candidates' privacy, please sign in or create an account to view the full profile.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button to="/auth?view=signin&role=recruiter" variant="secondary" className="w-full sm:w-auto">
+              <Button to="/auth" variant="secondary" className="w-full sm:w-auto">
                   Sign In
               </Button>
-              <Button to="/auth?view=signup&role=recruiter" variant="primary" className="w-full sm:w-auto">
+              <Button to="/auth" variant="primary" className="w-full sm:w-auto">
                   Create Recruiter Account
               </Button>
           </div>
@@ -57,7 +57,6 @@ const RecruiterAuthGate: React.FC<{ isOpen: boolean; profileName?: string | null
 export const PublicProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
 
   // Logged-in user's data from context
   const { session, profile, isProfileCreated, loading: authUserLoading, error: authUserError } = useProfile();
@@ -82,21 +81,6 @@ export const PublicProfilePage: React.FC = () => {
         setShowRecruiterGate(false);
 
         try {
-            // If visitor is not logged in, show gate immediately and only fetch minimal data for display on the gate.
-            if (!session) {
-                const { data: profileData, error: profileError } = await supabase
-                  .from('profiles')
-                  .select('name, title')
-                  .eq('id', id)
-                  .single();
-                if(profileData) setPublicProfile(profileData as UserProfile);
-
-                sessionStorage.setItem('redirectAfterLogin', location.pathname);
-                setShowRecruiterGate(true);
-                setPageLoading(false);
-                return;
-            }
-            
             const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
                 .select('*')
@@ -108,6 +92,12 @@ export const PublicProfilePage: React.FC = () => {
                 throw profileError || new Error('Profile not found.');
             }
             setPublicProfile(profileData);
+
+            // If visitor is not logged in, show the gate and stop.
+            if (!session) {
+                setShowRecruiterGate(true);
+                return;
+            }
 
             const { data: docRecords, error: docError } = await supabase
                 .from('documents')
@@ -155,7 +145,7 @@ export const PublicProfilePage: React.FC = () => {
         setPageLoading(false);
     }
 
-  }, [userId, isMyProfile, authUserLoading, session, isProfileCreated, authUserError, navigate, location.pathname]);
+  }, [userId, isMyProfile, authUserLoading, session, isProfileCreated, authUserError, navigate]);
   
   const handleShare = () => {
     if (!profile) return;
@@ -188,12 +178,22 @@ export const PublicProfilePage: React.FC = () => {
     return <div className="text-center p-10">Profile not found.</div>;
   }
 
+  // To prevent flash of content before gate appears, if gate is to be shown, don't render profile yet.
+  if (showRecruiterGate && !profileToDisplay) {
+    return (
+        <>
+            <RecruiterAuthGate isOpen={true} />
+            <div className="container mx-auto px-6 max-w-4xl blur-md pointer-events-none"><LoadingSpinner /></div>
+        </>
+    );
+  }
+
   return (
     <>
       <RecruiterAuthGate 
         isOpen={showRecruiterGate} 
-        profileName={publicProfile?.name}
-        profileTitle={publicProfile?.title}
+        profileName={profileToDisplay?.name}
+        profileTitle={profileToDisplay?.title}
       />
       <div className={`py-12 sm:py-16 transition-all duration-300 ${showRecruiterGate ? 'blur-md pointer-events-none' : ''}`}>
         <div className="container mx-auto px-6 max-w-4xl animate-fade-in-up">

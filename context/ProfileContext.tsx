@@ -58,40 +58,19 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (newSession) {
             setError(null);
             try {
-                const { data, error: fetchError } = await supabase
+                const { data, error } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', newSession.user.id)
                     .single();
 
-                if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116: row not found
-                    throw fetchError;
+                if (error && error.code !== 'PGRST116') { // PGRST116: row not found
+                    throw error;
                 }
-                
-                if (data) {
-                    setProfile(data);
-                } else {
-                    // Profile not found, check if it's a new recruiter
-                    if (newSession.user?.user_metadata?.role === 'recruiter') {
-                        const { data: newProfile, error: insertError } = await supabase
-                            .from('profiles')
-                            .insert({
-                                id: newSession.user.id,
-                                name: newSession.user.user_metadata.full_name || 'Recruiter',
-                                role: 'recruiter',
-                            })
-                            .select()
-                            .single();
-                        
-                        if (insertError) throw insertError;
-                        setProfile(newProfile);
-                    } else {
-                        setProfile(null); // It's likely a new candidate, direct to onboarding
-                    }
-                }
+                setProfile(data);
             } catch (error) {
-                console.error("Error processing auth state:", error);
-                setError('Failed to fetch or create profile.');
+                console.error("Error fetching profile:", error);
+                setError('Failed to fetch profile.');
                 setProfile(null);
             }
         } else {

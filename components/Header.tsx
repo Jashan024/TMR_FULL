@@ -43,29 +43,17 @@ const Header: React.FC = () => {
     const activeLinkStyle = "text-white font-semibold after:content-[''] after:absolute after:left-0 after:bottom-0 after:w-full after:h-[2px] after:bg-cyan-400 after:shadow-[0_0_8px_theme(colors.cyan.400)]";
     const mobileLinkStyle = "block py-2 text-base";
 
-    const isRecruiter = profile?.role === 'recruiter';
-    const homeLink = isRecruiter ? "/candidates" : (profile ? "/profile/me" : "/");
-
     return (
         <header className="bg-gray-900/70 backdrop-blur-lg sticky top-0 z-50 border-b border-gray-800">
             <div className="container mx-auto px-6 py-3 flex justify-between items-center">
-                <NavLink to={homeLink} className="text-xl font-bold text-white tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">
+                <NavLink to={profile ? "/profile/me" : "/"} className="text-xl font-bold text-white tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">
                     TMR
                 </NavLink>
                 
                 <nav className="hidden md:flex items-center space-x-8">
-                    {isRecruiter ? (
-                        <>
-                            <NavItem to="/candidates" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Candidates</NavItem>
-                            <NavItem to="/messages" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Messages</NavItem>
-                        </>
-                    ) : (
-                        <>
-                            <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Find Jobs</NavItem>
-                            <NavItem to="/documents" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Documents</NavItem>
-                            <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Public Profile</NavItem>
-                        </>
-                    )}
+                    <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Find Jobs</NavItem>
+                    <NavItem to="/documents" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Documents</NavItem>
+                    <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Public Profile</NavItem>
                 </nav>
 
                 <div className="flex items-center space-x-4">
@@ -93,18 +81,9 @@ const Header: React.FC = () => {
             {/* Mobile Menu */}
             <div className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${isMenuOpen ? 'max-h-96 border-t border-gray-800' : 'max-h-0'}`}>
                 <nav className="px-6 pb-4 pt-2 flex flex-col space-y-1">
-                    {isRecruiter ? (
-                        <>
-                            <NavItem to="/candidates" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Candidates</NavItem>
-                            <NavItem to="/messages" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Messages</NavItem>
-                        </>
-                    ) : (
-                        <>
-                            <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Find Jobs</NavItem>
-                            <NavItem to="/documents" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Documents</NavItem>
-                            <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Public Profile</NavItem>
-                        </>
-                    )}
+                    <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Find Jobs</NavItem>
+                    <NavItem to="/documents" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Documents</NavItem>
+                    <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Public Profile</NavItem>
                     
                     {profile && (
                         <div className="pt-4 mt-2 border-t border-gray-700">

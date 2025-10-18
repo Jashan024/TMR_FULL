@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { Input } from '../components/Input';
@@ -10,41 +10,26 @@ import { useProfile } from '../context/ProfileContext';
 type AuthView = 'signin' | 'signup' | 'forgot_password';
 
 const AuthPage: React.FC = () => {
-    const location = useLocation();
-    const searchParams = new URLSearchParams(location.search);
-    const role = searchParams.get('role');
-    const initialView = searchParams.get('view') as AuthView | null;
-    
-    const [view, setView] = useState<AuthView>(initialView || 'signup');
+    const [view, setView] = useState<AuthView>('signup');
     const [formLoading, setFormLoading] = useState(false);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const navigate = useNavigate();
-    const { session, isProfileCreated, loading: profileLoading, profile } = useProfile();
+    const { session, isProfileCreated, loading: profileLoading } = useProfile();
     const userId = session?.user?.id;
 
-    const isLoading = formLoading || (!!userId && profileLoading);
-    
-    useEffect(() => {
-        if(initialView) setView(initialView);
-    }, [initialView]);
+    // This combined loading state handles both the form submission and the subsequent profile loading.
+    const isLoading = formLoading || profileLoading;
 
+    // If a user is already logged in, redirect them away from the auth page
+    // once we know their profile status.
     useEffect(() => {
+        // Wait until the profile loading is complete before redirecting.
+        // Depend on the stable `userId` instead of the `session` object to prevent loops on token refresh.
         if (userId && !profileLoading) {
-            const redirectPath = sessionStorage.getItem('redirectAfterLogin');
-            if (redirectPath) {
-                sessionStorage.removeItem('redirectAfterLogin');
-                navigate(redirectPath);
-                return;
-            }
-
-            if (profile?.role === 'recruiter') {
-                navigate('/candidates');
-            } else {
-                navigate(isProfileCreated ? '/profile/me' : '/onboarding');
-            }
+            navigate(isProfileCreated ? '/profile/me' : '/onboarding');
         }
-    }, [userId, isProfileCreated, profileLoading, navigate, profile?.role]);
+    }, [userId, isProfileCreated, profileLoading, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -63,6 +48,7 @@ const AuthPage: React.FC = () => {
         setError('');
         setMessage('');
 
+        // Add manual validation before setting loading state
         if (view === 'signup' && (!name.trim() || !email.trim() || !password)) {
             setError('Please fill in all fields to sign up.');
             return;
@@ -83,27 +69,34 @@ const AuthPage: React.FC = () => {
                 const { data, error } = await supabase.auth.signUp({ 
                     email, 
                     password, 
-                    options: { 
-                        data: { 
-                            full_name: name,
-                            role: role === 'recruiter' ? 'recruiter' : 'candidate'
-                        } 
-                    } 
+                    options: { data: { full_name: name } } 
                 });
 
                 if (error) throw error;
                 
+                // On successful sign-up, the onAuthStateChange listener will handle setting the session
+                // and the useEffect hook above will trigger the redirect.
+                // We only need to show a message if email confirmation is required.
                 if (data.user && !data.session) {
                     setMessage('Check your email for a confirmation link to complete your registration.');
                 }
             } else if (view === 'signin') {
-                const { error } = await supabase.auth.signInWithPassword({
+                const { data, error } = await supabase.auth.signInWithPassword({
                     email,
                     password,
                 });
                 if (error) throw error;
+                
+                if (!data.session) {
+                    throw new Error('Sign in failed, please try again.');
+                }
+                // On successful sign-in, the onAuthStateChange listener will fire, which updates the
+                // `session` state. The useEffect hook at the top of this component will then handle redirection.
+                
             } else if (view === 'forgot_password') {
                 const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    // This path should point to where your app will handle the password update.
+                    // For now, it redirects back to the auth page. You might want a dedicated reset page.
                     redirectTo: `${window.location.origin}/#/auth`,
                 });
                 if (error) throw error;
@@ -122,8 +115,6 @@ const AuthPage: React.FC = () => {
                 ? 'text-white bg-gray-800/80' 
                 : 'text-gray-400 bg-gray-900/50 hover:bg-gray-800/60'
         }`;
-    
-    const isRecruiterFlow = role === 'recruiter';
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden">
@@ -139,7 +130,7 @@ const AuthPage: React.FC = () => {
                     {view !== 'forgot_password' && (
                         <div className="flex">
                             <button onClick={() => { setView('signup'); setError(''); setMessage(''); }} className={tabButtonClasses('signup')}>
-                                {isRecruiterFlow ? 'Create Account' : 'Sign Up'}
+                                Sign Up
                             </button>
                             <button onClick={() => { setView('signin'); setError(''); setMessage(''); }} className={tabButtonClasses('signin')}>
                                 Sign In
@@ -153,9 +144,7 @@ const AuthPage: React.FC = () => {
 
                         {view === 'signup' && (
                             <form onSubmit={handleSubmit} className="space-y-6">
-                                <h2 className="text-2xl font-bold text-center text-white">
-                                    {isRecruiterFlow ? 'Create a Recruiter Account' : 'Create Your Account'}
-                                </h2>
+                                <h2 className="text-2xl font-bold text-center text-white">Create Your Account</h2>
                                 <Input label="Full Name" name="name" type="text" placeholder="Alex Doe" required icon={<UserIcon />} disabled={isLoading} />
                                 <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} disabled={isLoading} />
                                 <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} disabled={isLoading} />
@@ -167,9 +156,7 @@ const AuthPage: React.FC = () => {
                         
                         {view === 'signin' && (
                             <form onSubmit={handleSubmit} className="space-y-6">
-                                <h2 className="text-2xl font-bold text-center text-white">
-                                    {isRecruiterFlow ? 'Recruiter Sign In' : 'Welcome Back'}
-                                </h2>
+                                <h2 className="text-2xl font-bold text-center text-white">Welcome Back</h2>
                                 <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} disabled={isLoading} />
                                 <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} disabled={isLoading} />
                                 <div className="text-right">

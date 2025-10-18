@@ -10,8 +10,6 @@ import DocumentsPage from './pages/DocumentsPage';
 import JobSearchPage from './pages/JobSearchPage';
 import RecruitersPage from './pages/RecruitersPage';
 import RecruiterConfirmationPage from './pages/RecruiterConfirmationPage';
-import CandidatesPage from './pages/CandidatesPage';
-import MessagesPage from './pages/MessagesPage';
 import Header from './components/Header';
 import AuthPage from './pages/AuthPage';
 
@@ -32,8 +30,6 @@ const AppContent: React.FC = () => {
                     <Route path="/jobs" element={<JobSearchPage />} />
                     <Route path="/recruiters" element={<RecruitersPage />} />
                     <Route path="/recruiters/thank-you" element={<RecruiterConfirmationPage />} />
-                    <Route path="/candidates" element={<CandidatesPage />} />
-                    <Route path="/messages" element={<MessagesPage />} />
                 </Routes>
             </main>
         </>

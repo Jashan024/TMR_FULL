@@ -11,7 +11,6 @@ export interface UserProfile {
   roles: string[];
   certifications: string[];
   portfolio_url: string;
-  role?: 'candidate' | 'recruiter';
 }
 
 export interface DocumentFile {
