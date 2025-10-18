@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
 import { CloseIcon, MenuIcon } from './Icons';
 import { supabase } from '../lib/supabaseClient';
@@ -34,7 +34,11 @@ const NavItem: React.FC<{ to: string, children: React.ReactNode, isComingSoon?: 
 const Header: React.FC = () => {
     const { profile, logout } = useProfile();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    
+    const location = useLocation();
+
+    const isRecruiter = profile?.role === 'recruiter';
+    const isRecruiterViewingProfile = isRecruiter && location.pathname.startsWith('/profile/');
+
     const handleLogout = async () => {
         await logout();
     };
@@ -43,22 +47,55 @@ const Header: React.FC = () => {
     const activeLinkStyle = "text-white font-semibold after:content-[''] after:absolute after:left-0 after:bottom-0 after:w-full after:h-[2px] after:bg-cyan-400 after:shadow-[0_0_8px_theme(colors.cyan.400)]";
     const mobileLinkStyle = "block py-2 text-base";
 
+    const candidateNav = (
+        <>
+            <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Find Jobs</NavItem>
+            <NavItem to="/documents" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Documents</NavItem>
+            <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Public Profile</NavItem>
+        </>
+    );
+
+    const recruiterNav = (
+        <>
+            <NavItem to="/candidates" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Candidates</NavItem>
+            <NavItem to="/messages" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Messages</NavItem>
+        </>
+    );
+
+    const mobileCandidateNav = (
+        <>
+            <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Find Jobs</NavItem>
+            <NavItem to="/documents" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Documents</NavItem>
+            <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Public Profile</NavItem>
+        </>
+    );
+
+    const mobileRecruiterNav = (
+        <>
+            <NavItem to="/candidates" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Candidates</NavItem>
+            <NavItem to="/messages" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Messages</NavItem>
+        </>
+    );
+
     return (
         <header className="bg-gray-900/70 backdrop-blur-lg sticky top-0 z-50 border-b border-gray-800">
             <div className="container mx-auto px-6 py-3 flex justify-between items-center">
-                <NavLink to={profile ? "/profile/me" : "/"} className="text-xl font-bold text-white tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">
+                <NavLink to={isRecruiter ? "/candidates" : (profile ? "/profile/me" : "/")} className="text-xl font-bold text-white tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">
                     TMR
                 </NavLink>
                 
                 <nav className="hidden md:flex items-center space-x-8">
-                    <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Find Jobs</NavItem>
-                    <NavItem to="/documents" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Documents</NavItem>
-                    <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Public Profile</NavItem>
+                    {isRecruiter ? (!isRecruiterViewingProfile && recruiterNav) : candidateNav}
                 </nav>
 
                 <div className="flex items-center space-x-4">
                     {profile && (
                         <div className="hidden md:flex items-center space-x-4">
+                            {isRecruiterViewingProfile && (
+                                <NavLink to="/candidates" className="text-sm font-medium text-cyan-400 hover:text-white transition-colors">
+                                    Dashboard
+                                </NavLink>
+                            )}
                             <Avatar photo_url={profile.photo_url} name={profile.name} />
                             <span className="font-medium text-gray-200">{profile.name}</span>
                             <span className="text-gray-600">|</span>
@@ -81,12 +118,19 @@ const Header: React.FC = () => {
             {/* Mobile Menu */}
             <div className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${isMenuOpen ? 'max-h-96 border-t border-gray-800' : 'max-h-0'}`}>
                 <nav className="px-6 pb-4 pt-2 flex flex-col space-y-1">
-                    <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Find Jobs</NavItem>
-                    <NavItem to="/documents" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Documents</NavItem>
-                    <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Public Profile</NavItem>
+                    {isRecruiter ? (!isRecruiterViewingProfile && mobileRecruiterNav) : mobileCandidateNav}
                     
                     {profile && (
                         <div className="pt-4 mt-2 border-t border-gray-700">
+                            {isRecruiterViewingProfile && (
+                                <NavLink
+                                    to="/candidates"
+                                    onClick={() => setIsMenuOpen(false)}
+                                    className="block py-2 px-3 text-base text-cyan-400 rounded-md bg-gray-800/50 hover:bg-gray-700/80 hover:text-white transition-colors mb-2"
+                                >
+                                    Go to Dashboard
+                                </NavLink>
+                            )}
                             <div className="flex items-center space-x-3 mb-4 px-1">
                                 <Avatar photo_url={profile.photo_url} name={profile.name} size="h-10 w-10" />
                                 <div>

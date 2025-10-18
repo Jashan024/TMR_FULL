@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { Input } from '../components/Input';
@@ -10,12 +10,17 @@ import { useProfile } from '../context/ProfileContext';
 type AuthView = 'signin' | 'signup' | 'forgot_password';
 
 const AuthPage: React.FC = () => {
-    const [view, setView] = useState<AuthView>('signup');
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const userRole = queryParams.get('role') || 'candidate';
+    const initialView = (queryParams.get('view') as AuthView) || 'signup';
+
+    const [view, setView] = useState<AuthView>(initialView);
     const [formLoading, setFormLoading] = useState(false);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const navigate = useNavigate();
-    const { session, isProfileCreated, loading: profileLoading } = useProfile();
+    const { session, isProfileCreated, profile, loading: profileLoading } = useProfile();
     const userId = session?.user?.id;
 
     // This combined loading state handles both the form submission and the subsequent profile loading.
@@ -25,11 +30,23 @@ const AuthPage: React.FC = () => {
     // once we know their profile status.
     useEffect(() => {
         // Wait until the profile loading is complete before redirecting.
-        // Depend on the stable `userId` instead of the `session` object to prevent loops on token refresh.
         if (userId && !profileLoading) {
-            navigate(isProfileCreated ? '/profile/me' : '/onboarding');
+            const redirectUrl = sessionStorage.getItem('redirectUrl');
+            if (redirectUrl) {
+                sessionStorage.removeItem('redirectUrl');
+                // Use window.location.href because react-router's navigate doesn't always
+                // work well with hash routing after a full page auth flow.
+                window.location.href = redirectUrl;
+                return;
+            }
+            
+            if (profile?.role === 'recruiter') {
+                navigate('/candidates');
+            } else {
+                navigate(isProfileCreated ? '/profile/me' : '/onboarding');
+            }
         }
-    }, [userId, isProfileCreated, profileLoading, navigate]);
+    }, [userId, isProfileCreated, profile, profileLoading, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -69,7 +86,12 @@ const AuthPage: React.FC = () => {
                 const { data, error } = await supabase.auth.signUp({ 
                     email, 
                     password, 
-                    options: { data: { full_name: name } } 
+                    options: { 
+                        data: { 
+                            full_name: name,
+                            role: userRole,
+                        } 
+                    } 
                 });
 
                 if (error) throw error;
@@ -144,7 +166,9 @@ const AuthPage: React.FC = () => {
 
                         {view === 'signup' && (
                             <form onSubmit={handleSubmit} className="space-y-6">
-                                <h2 className="text-2xl font-bold text-center text-white">Create Your Account</h2>
+                                <h2 className="text-2xl font-bold text-center text-white">
+                                    {userRole === 'recruiter' ? 'Create Recruiter Account' : 'Create Your Account'}
+                                </h2>
                                 <Input label="Full Name" name="name" type="text" placeholder="Alex Doe" required icon={<UserIcon />} disabled={isLoading} />
                                 <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} disabled={isLoading} />
                                 <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} disabled={isLoading} />

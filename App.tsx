@@ -12,6 +12,9 @@ import RecruitersPage from './pages/RecruitersPage';
 import RecruiterConfirmationPage from './pages/RecruiterConfirmationPage';
 import Header from './components/Header';
 import AuthPage from './pages/AuthPage';
+import CandidatesPage from './pages/CandidatesPage';
+import MessagesPage from './pages/MessagesPage';
+
 
 const AppContent: React.FC = () => {
     const location = useLocation();
@@ -28,6 +31,8 @@ const AppContent: React.FC = () => {
                     <Route path="/profile/:userId" element={<PublicProfilePage />} />
                     <Route path="/documents" element={<DocumentsPage />} />
                     <Route path="/jobs" element={<JobSearchPage />} />
+                    <Route path="/candidates" element={<CandidatesPage />} />
+                    <Route path="/messages" element={<MessagesPage />} />
                     <Route path="/recruiters" element={<RecruitersPage />} />
                     <Route path="/recruiters/thank-you" element={<RecruiterConfirmationPage />} />
                 </Routes>

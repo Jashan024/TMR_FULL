@@ -56,6 +56,38 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         setSession(newSession);
 
         if (newSession) {
+            // Handle auto-profile creation for new recruiters
+            const isNewUser = _event === 'SIGNED_IN' && newSession.user.created_at && (new Date().getTime() - new Date(newSession.user.created_at).getTime()) < 60000;
+            const isRecruiter = newSession.user.user_metadata.role === 'recruiter';
+            
+            if (isNewUser && isRecruiter) {
+                try {
+                    // Check if a profile already exists to avoid race conditions
+                    const { data: existingProfile } = await supabase
+                        .from('profiles')
+                        .select('id')
+                        .eq('id', newSession.user.id)
+                        .single();
+
+                    if (!existingProfile) {
+                        const { error: upsertError } = await supabase
+                            .from('profiles')
+                            .upsert({
+                                id: newSession.user.id,
+                                name: newSession.user.user_metadata.full_name || 'Recruiter',
+                                role: 'recruiter',
+                                title: 'Recruiter',
+                                industry: '', experience: '0', location: '', bio: '',
+                                skills: [], roles: [], certifications: [], portfolio_url: '', photo_url: ''
+                            });
+                        if (upsertError) throw upsertError;
+                    }
+                } catch (error) {
+                    console.error("Failed to auto-create recruiter profile:", error);
+                    setError("Failed to initialize your recruiter account.");
+                }
+            }
+            
             setError(null);
             try {
                 const { data, error } = await supabase
