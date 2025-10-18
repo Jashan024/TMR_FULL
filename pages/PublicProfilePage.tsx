@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
 import { useDocuments } from '../context/DocumentContext';
@@ -58,21 +58,18 @@ export const PublicProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
 
-  // Logged-in user's data from context
   const { session, profile, isProfileCreated, loading: authUserLoading, error: authUserError } = useProfile();
   const { documents: authUserDocuments } = useDocuments();
   
-  // State for publicly fetched profile
   const [publicProfile, setPublicProfile] = useState<UserProfile | null>(null);
   const [publicDocuments, setPublicDocuments] = useState<DocumentFile[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
   const [showRecruiterGate, setShowRecruiterGate] = useState(false);
 
-  // State for share button
   const [copied, setCopied] = useState(false);
   
-  const isMyProfile = userId === 'me' || (session && profile && userId === profile.id);
+  const isMyProfile = useMemo(() => userId === 'me' || (profile && userId === profile.id), [userId, profile]);
 
   useEffect(() => {
     const fetchPublicProfile = async (id: string) => {
@@ -88,12 +85,11 @@ export const PublicProfilePage: React.FC = () => {
                 .single();
 
             if (profileError || !profileData) {
-                if(profileError?.code === 'PGRST116') throw new Error('Profile not found.'); // row not found
+                if(profileError?.code === 'PGRST116') throw new Error('Profile not found.');
                 throw profileError || new Error('Profile not found.');
             }
             setPublicProfile(profileData);
 
-            // If visitor is not logged in, show the gate and stop.
             if (!session) {
                 setShowRecruiterGate(true);
                 return;
@@ -128,7 +124,6 @@ export const PublicProfilePage: React.FC = () => {
     }
 
     if (isMyProfile) {
-        // Viewing our own profile. We can use context data.
         if (!authUserLoading) {
             setPageLoading(false);
             if (session && !isProfileCreated) {
@@ -138,18 +133,23 @@ export const PublicProfilePage: React.FC = () => {
             }
         }
     } else if (userId) {
-        // Viewing someone else's profile. Fetch the data.
+        // This check prevents re-fetching data if it's already loaded for the current userId.
+        // It's a crucial fix for the re-render loop caused by session token refreshes.
+        if (publicProfile?.id === userId) {
+            return;
+        }
         fetchPublicProfile(userId);
     } else {
         setPageError("Invalid profile URL.");
         setPageLoading(false);
     }
 
-  }, [userId, isMyProfile, authUserLoading, session, isProfileCreated, authUserError, navigate]);
+  }, [userId, isMyProfile, authUserLoading, session, isProfileCreated, authUserError, navigate, publicProfile]);
   
   const handleShare = () => {
     if (!profile) return;
-    const shareUrl = `${window.location.origin}/#/profile/${profile.id}`;
+    // Use window.location.href to build a more robust URL that includes the domain.
+    const shareUrl = new URL(`/#/profile/${profile.id}`, window.location.href).href;
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -170,36 +170,40 @@ export const PublicProfilePage: React.FC = () => {
     );
   }
 
-  if (pageError && !showRecruiterGate) {
+  if (pageError && !isMyProfile) {
       return <div className="text-center p-10 text-red-400">{pageError}</div>;
   }
   
   if (!profileToDisplay && !showRecruiterGate) {
-    return <div className="text-center p-10">Profile not found.</div>;
+    return <div className="text-center p-10">Profile could not be loaded. It may not exist or you may not have permission to view it.</div>;
   }
-
-  // To prevent flash of content before gate appears, if gate is to be shown, don't render profile yet.
-  if (showRecruiterGate && !profileToDisplay) {
+  
+  // This ensures the gate is shown for unauthenticated users, even while the profile data is loading for the background.
+  if (showRecruiterGate) {
     return (
-        <>
-            <RecruiterAuthGate isOpen={true} />
-            <div className="container mx-auto px-6 max-w-4xl blur-md pointer-events-none"><LoadingSpinner /></div>
-        </>
+      <>
+        <RecruiterAuthGate 
+          isOpen={true} 
+          profileName={publicProfile?.name} 
+          profileTitle={publicProfile?.title} 
+        />
+        {/* Render a blurred loader behind the gate until profile data is ready */}
+        {!publicProfile && (
+            <div className="container mx-auto px-6 max-w-4xl blur-md pointer-events-none">
+                <LoadingSpinner />
+            </div>
+        )}
+      </>
     );
   }
 
+
   return (
     <>
-      <RecruiterAuthGate 
-        isOpen={showRecruiterGate} 
-        profileName={profileToDisplay?.name}
-        profileTitle={profileToDisplay?.title}
-      />
-      <div className={`py-12 sm:py-16 transition-all duration-300 ${showRecruiterGate ? 'blur-md pointer-events-none' : ''}`}>
+      <div className={`py-12 sm:py-16 transition-all duration-300`}>
         <div className="container mx-auto px-6 max-w-4xl animate-fade-in-up">
             {profileToDisplay && (
                 <main>
-                {/* Header Section */}
                 <section className="relative mb-12">
                   {isMyProfile && (
                     <div className="sm:absolute sm:top-0 sm:right-0 mb-6 sm:mb-0 flex flex-col sm:flex-row gap-3">
@@ -232,13 +236,11 @@ export const PublicProfilePage: React.FC = () => {
                   </div>
                 </section>
       
-                {/* Bio Section */}
                  <Card className="mb-8">
                       <h2 className="text-2xl font-semibold text-white mb-3">About Me</h2>
                       <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{profileToDisplay.bio}</p>
                  </Card>
                  
-                {/* Public Documents Section */}
                 {documentsToDisplay.length > 0 && (
                   <Card className="mb-8">
                     <h2 className="text-2xl font-semibold text-white mb-4 flex items-center">
@@ -258,7 +260,6 @@ export const PublicProfilePage: React.FC = () => {
                 )}
       
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  {/* LEFT COLUMN */}
                   <div className="md:col-span-1 space-y-8">
                       <Card>
                         <h2 className="text-xl font-semibold text-white mb-4">Preferences</h2>
@@ -290,7 +291,6 @@ export const PublicProfilePage: React.FC = () => {
                       </Card>
                   </div>
       
-                  {/* RIGHT COLUMN */}
                   <div className="md:col-span-2 space-y-8">
                        <Card>
                         <h2 className="text-xl font-semibold text-white mb-4">Skills</h2>
