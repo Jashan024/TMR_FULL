@@ -8,8 +8,6 @@ import OnboardingPage from './pages/OnboardingPage';
 import { PublicProfilePage } from './pages/PublicProfilePage';
 import DocumentsPage from './pages/DocumentsPage';
 import JobSearchPage from './pages/JobSearchPage';
-import RecruitersPage from './pages/RecruitersPage';
-import RecruiterConfirmationPage from './pages/RecruiterConfirmationPage';
 import Header from './components/Header';
 import AuthPage from './pages/AuthPage';
 import CandidatesPage from './pages/CandidatesPage';
@@ -18,7 +16,7 @@ import MessagesPage from './pages/MessagesPage';
 
 const AppContent: React.FC = () => {
     const location = useLocation();
-    const showHeader = !['/', '/recruiters', '/auth', '/recruiters/thank-you'].includes(location.pathname);
+    const showHeader = !['/', '/auth'].includes(location.pathname);
 
     return (
         <>
@@ -33,8 +31,6 @@ const AppContent: React.FC = () => {
                     <Route path="/jobs" element={<JobSearchPage />} />
                     <Route path="/candidates" element={<CandidatesPage />} />
                     <Route path="/messages" element={<MessagesPage />} />
-                    <Route path="/recruiters" element={<RecruitersPage />} />
-                    <Route path="/recruiters/thank-you" element={<RecruiterConfirmationPage />} />
                 </Routes>
             </main>
         </>

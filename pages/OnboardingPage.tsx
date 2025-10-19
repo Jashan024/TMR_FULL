@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
@@ -7,7 +8,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import Modal from '../components/Modal';
 import { Input, Select, Textarea } from '../components/Input';
-import { UserIcon, BriefcaseIcon, BuildingOfficeIcon, CalendarDaysIcon, MapPinIcon, LinkIcon, TagIcon, AcademicCapIcon, CloseIcon, CameraIcon, UploadIcon } from '../components/Icons';
+import { UserIcon, BriefcaseIcon, BuildingOfficeIcon, CalendarDaysIcon, MapPinIcon, LinkIcon, TagIcon, AcademicCapIcon, CloseIcon, CameraIcon, UploadIcon, LoaderIcon } from '../components/Icons';
 import { supabase } from '../lib/supabaseClient';
 
 const ProgressBar: React.FC<{ step: number }> = ({ step }) => {
@@ -154,7 +155,7 @@ const PhotoUploadForm: React.FC<{onUpload: (file: File) => void, onClose: () => 
 }
 
 const OnboardingPage: React.FC = () => {
-    const { profile, updateProfile, isProfileCreated } = useProfile();
+    const { profile, updateProfile, isProfileCreated, loading: profileLoading } = useProfile();
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
@@ -164,6 +165,13 @@ const OnboardingPage: React.FC = () => {
         photo_url: '', name: '', title: '', industry: '', experience: '', location: '',
         bio: '', skills: [], roles: [], certifications: [], portfolio_url: ''
     });
+
+    useEffect(() => {
+        // Redirect recruiters away from the onboarding page as it's not for them.
+        if (!profileLoading && profile && profile.role === 'recruiter') {
+            navigate('/candidates');
+        }
+    }, [profile, profileLoading, navigate]);
 
     useEffect(() => {
         if (profile) setFormData(profile);
@@ -232,6 +240,15 @@ const OnboardingPage: React.FC = () => {
             setIsSaving(false);
         }
     };
+
+    // Show a loading spinner while checking the user's role to prevent content flashing.
+    if (profileLoading || (profile && profile.role === 'recruiter')) {
+        return (
+            <div className="flex justify-center items-center h-[calc(100vh-80px)]">
+                <LoaderIcon className="w-8 h-8" />
+            </div>
+        );
+    }
 
     return (
         <>

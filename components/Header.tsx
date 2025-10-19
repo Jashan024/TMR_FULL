@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
@@ -50,6 +51,7 @@ const Header: React.FC = () => {
     const candidateNav = (
         <>
             <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Find Jobs</NavItem>
+            <NavItem to="/messages" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Messages</NavItem>
             <NavItem to="/documents" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Documents</NavItem>
             <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Public Profile</NavItem>
         </>
@@ -65,6 +67,7 @@ const Header: React.FC = () => {
     const mobileCandidateNav = (
         <>
             <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Find Jobs</NavItem>
+            <NavItem to="/messages" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Messages</NavItem>
             <NavItem to="/documents" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Documents</NavItem>
             <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Public Profile</NavItem>
         </>
@@ -85,21 +88,29 @@ const Header: React.FC = () => {
                 </NavLink>
                 
                 <nav className="hidden md:flex items-center space-x-8">
-                    {isRecruiter ? (!isRecruiterViewingProfile && recruiterNav) : candidateNav}
+                    {isRecruiter ? recruiterNav : candidateNav}
                 </nav>
 
                 <div className="flex items-center space-x-4">
                     {profile && (
                         <div className="hidden md:flex items-center space-x-4">
-                            {isRecruiterViewingProfile && (
-                                <NavLink to="/candidates" className="text-sm font-medium text-cyan-400 hover:text-white transition-colors">
-                                    Dashboard
-                                </NavLink>
+                            {isRecruiter ? (
+                                <>
+                                    {isRecruiterViewingProfile && (
+                                        <NavLink to="/candidates" className="text-sm font-medium text-cyan-400 hover:text-white transition-colors">
+                                            &larr; Back to Candidates
+                                        </NavLink>
+                                    )}
+                                    <button onClick={handleLogout} className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Log Out</button>
+                                </>
+                            ) : (
+                                <>
+                                    <Avatar photo_url={profile.photo_url} name={profile.name} />
+                                    <span className="font-medium text-gray-200">{profile.name}</span>
+                                    <span className="text-gray-600">|</span>
+                                    <button onClick={handleLogout} className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Log Out</button>
+                                </>
                             )}
-                            <Avatar photo_url={profile.photo_url} name={profile.name} />
-                            <span className="font-medium text-gray-200">{profile.name}</span>
-                            <span className="text-gray-600">|</span>
-                            <button onClick={handleLogout} className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Log Out</button>
                         </div>
                     )}
                      <div className="md:hidden">
@@ -118,32 +129,45 @@ const Header: React.FC = () => {
             {/* Mobile Menu */}
             <div className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${isMenuOpen ? 'max-h-96 border-t border-gray-800' : 'max-h-0'}`}>
                 <nav className="px-6 pb-4 pt-2 flex flex-col space-y-1">
-                    {isRecruiter ? (!isRecruiterViewingProfile && mobileRecruiterNav) : mobileCandidateNav}
+                    {isRecruiter ? mobileRecruiterNav : mobileCandidateNav}
                     
                     {profile && (
                         <div className="pt-4 mt-2 border-t border-gray-700">
-                            {isRecruiterViewingProfile && (
-                                <NavLink
-                                    to="/candidates"
-                                    onClick={() => setIsMenuOpen(false)}
-                                    className="block py-2 px-3 text-base text-cyan-400 rounded-md bg-gray-800/50 hover:bg-gray-700/80 hover:text-white transition-colors mb-2"
-                                >
-                                    Go to Dashboard
-                                </NavLink>
+                            {isRecruiter ? (
+                                <>
+                                    {isRecruiterViewingProfile && (
+                                        <NavLink
+                                            to="/candidates"
+                                            onClick={() => setIsMenuOpen(false)}
+                                            className="block py-2 px-3 text-base text-cyan-400 rounded-md bg-gray-800/50 hover:bg-gray-700/80 hover:text-white transition-colors mb-2"
+                                        >
+                                            &larr; Back to Candidates
+                                        </NavLink>
+                                    )}
+                                    <button
+                                        onClick={() => { handleLogout(); setIsMenuOpen(false); }}
+                                        className="w-full text-left block py-2 px-3 text-base text-gray-300 rounded-md bg-gray-800/50 hover:bg-gray-700/80 hover:text-white transition-colors"
+                                    >
+                                        Log Out
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex items-center space-x-3 mb-4 px-1">
+                                        <Avatar photo_url={profile.photo_url} name={profile.name} size="h-10 w-10" />
+                                        <div>
+                                            <p className="font-medium text-white">{profile.name}</p>
+                                            <p className="text-sm text-gray-400">{profile.title}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => { handleLogout(); setIsMenuOpen(false); }}
+                                        className="w-full text-left block py-2 px-3 text-base text-gray-300 rounded-md bg-gray-800/50 hover:bg-gray-700/80 hover:text-white transition-colors"
+                                    >
+                                        Log Out
+                                    </button>
+                                </>
                             )}
-                            <div className="flex items-center space-x-3 mb-4 px-1">
-                                <Avatar photo_url={profile.photo_url} name={profile.name} size="h-10 w-10" />
-                                <div>
-                                    <p className="font-medium text-white">{profile.name}</p>
-                                    <p className="text-sm text-gray-400">{profile.title}</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => { handleLogout(); setIsMenuOpen(false); }}
-                                className="w-full text-left block py-2 px-3 text-base text-gray-300 rounded-md bg-gray-800/50 hover:bg-gray-700/80 hover:text-white transition-colors"
-                            >
-                                Log Out
-                            </button>
                         </div>
                     )}
                 </nav>

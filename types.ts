@@ -1,5 +1,6 @@
 export interface UserProfile {
   id: string; // User UUID from Supabase Auth
+  updated_at?: string;
   photo_url: string;
   name: string;
   title: string;
@@ -11,16 +12,16 @@ export interface UserProfile {
   roles: string[];
   certifications: string[];
   portfolio_url: string;
-  role?: 'candidate' | 'recruiter';
+  role: 'candidate' | 'recruiter';
 }
 
 export interface DocumentFile {
-  id: string;
+  id: number;
   user_id: string;
   name: string;
   type: 'Resume' | 'Cover Letter' | 'Portfolio';
   size: string;
-  uploaded_at: string;
+  created_at: string;
   visibility: 'public' | 'private';
   file_path: string;
   public_url?: string;

@@ -81,6 +81,12 @@ export const PublicProfilePage: React.FC = () => {
         setPageError(null);
         setShowRecruiterGate(false);
 
+        if (!supabase) {
+            setPageError("Application is not connected to a backend service.");
+            setPageLoading(false);
+            return;
+        }
+
         try {
             const { data: profileData, error: profileError } = await supabase
                 .from('profiles')

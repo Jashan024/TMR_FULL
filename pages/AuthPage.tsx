@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { Input } from '../components/Input';
-import { EnvelopeIcon, LockClosedIcon, UserIcon } from '../components/Icons';
+import { EnvelopeIcon, LockClosedIcon, UserIcon, BriefcaseIcon } from '../components/Icons';
 import { supabase } from '../lib/supabaseClient';
 import { useProfile } from '../context/ProfileContext';
 
@@ -12,7 +13,12 @@ type AuthView = 'signin' | 'signup' | 'forgot_password';
 const AuthPage: React.FC = () => {
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
-    const userRole = queryParams.get('role') || 'candidate';
+    
+    const initialRole = queryParams.get('role');
+    const [role, setRole] = useState<'candidate' | 'recruiter' | null>(
+        initialRole === 'candidate' || initialRole === 'recruiter' ? initialRole : null
+    );
+
     const initialView = (queryParams.get('view') as AuthView) || 'signup';
 
     const [view, setView] = useState<AuthView>(initialView);
@@ -89,7 +95,7 @@ const AuthPage: React.FC = () => {
                     options: { 
                         data: { 
                             full_name: name,
-                            role: userRole,
+                            role: role,
                         } 
                     } 
                 });
@@ -148,65 +154,102 @@ const AuthPage: React.FC = () => {
                 </div>
             </header>
             <main className="w-full max-w-md mx-auto z-10 animate-fade-in-up">
-                <Card className="p-0 overflow-hidden">
-                    {view !== 'forgot_password' && (
-                        <div className="flex">
-                            <button onClick={() => { setView('signup'); setError(''); setMessage(''); }} className={tabButtonClasses('signup')}>
-                                Sign Up
+                {!role ? (
+                    <Card className="p-8 text-center">
+                        <h2 className="text-2xl font-bold text-center text-white mb-2">Join as a Candidate or Recruiter</h2>
+                        <p className="text-gray-400 mb-8">Please select how you'd like to use the platform.</p>
+                        <div className="space-y-4">
+                            <button 
+                                onClick={() => setRole('candidate')}
+                                className="w-full text-left p-6 bg-gray-700/50 hover:bg-gray-700 border border-gray-600 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            >
+                                <div className="flex items-center">
+                                    <UserIcon className="w-8 h-8 text-cyan-400 mr-4 flex-shrink-0"/>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-white">I'm a Candidate</h3>
+                                        <p className="text-gray-400">Create a profile and let opportunities find you.</p>
+                                    </div>
+                                </div>
                             </button>
-                            <button onClick={() => { setView('signin'); setError(''); setMessage(''); }} className={tabButtonClasses('signin')}>
-                                Sign In
+                            <button 
+                                onClick={() => setRole('recruiter')}
+                                className="w-full text-left p-6 bg-gray-700/50 hover:bg-gray-700 border border-gray-600 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            >
+                                <div className="flex items-center">
+                                    <BriefcaseIcon className="w-8 h-8 text-cyan-400 mr-4 flex-shrink-0"/>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-white">I'm a Recruiter</h3>
+                                        <p className="text-gray-400">Find and connect with top-tier talent.</p>
+                                    </div>
+                                </div>
                             </button>
                         </div>
-                    )}
-
-                    <div className="p-8">
-                        {error && <p className="mb-4 text-center text-red-400">{error}</p>}
-                        {message && <p className="mb-4 text-center text-green-400">{message}</p>}
-
-                        {view === 'signup' && (
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                <h2 className="text-2xl font-bold text-center text-white">
-                                    {userRole === 'recruiter' ? 'Create Recruiter Account' : 'Create Your Account'}
-                                </h2>
-                                <Input label="Full Name" name="name" type="text" placeholder="Alex Doe" required icon={<UserIcon />} disabled={isLoading} />
-                                <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} disabled={isLoading} />
-                                <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} disabled={isLoading} />
-                                <Button type="submit" variant="primary" className="w-full" loading={isLoading}>
-                                    {isLoading ? 'Verifying...' : 'Create Account'}
-                                </Button>
-                            </form>
-                        )}
-                        
-                        {view === 'signin' && (
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                <h2 className="text-2xl font-bold text-center text-white">Welcome Back</h2>
-                                <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} disabled={isLoading} />
-                                <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} disabled={isLoading} />
-                                <div className="text-right">
-                                    <button type="button" onClick={() => setView('forgot_password')} className="text-sm text-cyan-400 hover:underline">Forgot password?</button>
-                                </div>
-                                <Button type="submit" variant="primary" className="w-full" loading={isLoading}>
-                                    {isLoading ? 'Signing In...' : 'Sign In'}
-                                </Button>
-                            </form>
+                    </Card>
+                ) : (
+                    <Card className="p-0 overflow-hidden">
+                        {view !== 'forgot_password' && (
+                            <div className="flex">
+                                <button onClick={() => { setView('signup'); setError(''); setMessage(''); }} className={tabButtonClasses('signup')}>
+                                    Sign Up
+                                </button>
+                                <button onClick={() => { setView('signin'); setError(''); setMessage(''); }} className={tabButtonClasses('signin')}>
+                                    Sign In
+                                </button>
+                            </div>
                         )}
 
-                        {view === 'forgot_password' && (
-                             <form onSubmit={handleSubmit} className="space-y-6">
-                                <h2 className="text-2xl font-bold text-center text-white">Reset Password</h2>
-                                <p className="text-center text-sm text-gray-400">Enter your email and we'll send you a link to reset your password.</p>
-                                <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} disabled={isLoading} />
-                                <Button type="submit" variant="primary" className="w-full" loading={isLoading}>
-                                    {isLoading ? 'Sending...' : 'Send Reset Link'}
-                                </Button>
-                                <div className="text-center">
-                                    <button type="button" onClick={() => setView('signin')} className="text-sm text-cyan-400 hover:underline">Back to Sign In</button>
-                                </div>
-                            </form>
-                        )}
-                    </div>
-                </Card>
+                        <div className="p-8">
+                            <div className="text-left mb-4">
+                                <button type="button" onClick={() => setRole(null)} className="text-sm text-cyan-400 hover:underline">&larr; Change role</button>
+                            </div>
+
+                            {error && <p className="mb-4 text-center text-red-400">{error}</p>}
+                            {message && <p className="mb-4 text-center text-green-400">{message}</p>}
+
+                            {view === 'signup' && (
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    <h2 className="text-2xl font-bold text-center text-white">
+                                        {role === 'recruiter' ? 'Create Recruiter Account' : 'Create Your Account'}
+                                    </h2>
+                                    <Input label="Full Name" name="name" type="text" placeholder="Alex Doe" required icon={<UserIcon />} disabled={isLoading} />
+                                    <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} disabled={isLoading} />
+                                    <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} disabled={isLoading} />
+                                    <Button type="submit" variant="primary" className="w-full" loading={isLoading}>
+                                        {isLoading ? 'Verifying...' : 'Create Account'}
+                                    </Button>
+                                </form>
+                            )}
+                            
+                            {view === 'signin' && (
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    <h2 className="text-2xl font-bold text-center text-white">Welcome Back</h2>
+                                    <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} disabled={isLoading} />
+                                    <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} disabled={isLoading} />
+                                    <div className="text-right">
+                                        <button type="button" onClick={() => setView('forgot_password')} className="text-sm text-cyan-400 hover:underline">Forgot password?</button>
+                                    </div>
+                                    <Button type="submit" variant="primary" className="w-full" loading={isLoading}>
+                                        {isLoading ? 'Signing In...' : 'Sign In'}
+                                    </Button>
+                                </form>
+                            )}
+
+                            {view === 'forgot_password' && (
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    <h2 className="text-2xl font-bold text-center text-white">Reset Password</h2>
+                                    <p className="text-center text-sm text-gray-400">Enter your email and we'll send you a link to reset your password.</p>
+                                    <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} disabled={isLoading} />
+                                    <Button type="submit" variant="primary" className="w-full" loading={isLoading}>
+                                        {isLoading ? 'Sending...' : 'Send Reset Link'}
+                                    </Button>
+                                    <div className="text-center">
+                                        <button type="button" onClick={() => setView('signin')} className="text-sm text-cyan-400 hover:underline">Back to Sign In</button>
+                                    </div>
+                                </form>
+                            )}
+                        </div>
+                    </Card>
+                )}
             </main>
         </div>
     );

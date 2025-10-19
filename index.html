@@ -37,6 +37,18 @@
   .animate-fade-in-up {
       animation: fade-in-up 0.5s ease-out forwards;
   }
+
+  /* Magic Loader Styles */
+  @keyframes magic-glow {
+    0%, 100% { box-shadow: 0 0 20px 5px rgba(0, 255, 255, 0.4); }
+    50% { box-shadow: 0 0 35px 15px rgba(0, 255, 255, 0.7); }
+  }
+
+  @keyframes magic-sparkle {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(0); opacity: 0; }
+  }
 </style>
 </head>
   <body class="bg-gray-900 text-gray-200">

@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { UserProfile } from '../types';
@@ -30,6 +31,8 @@ const fallbackProfile: UserProfile = {
     bio: "Passionate Senior Frontend Engineer with over 8 years of experience building beautiful, responsive, and user-centric web applications. My goal is to create interfaces that are not only functional but also a delight to use.",
     certifications: ["AWS Certified Developer"],
     portfolio_url: 'https://example.com',
+    // FIX: Added missing 'role' property to satisfy the UserProfile type.
+    role: 'candidate',
 };
 
 export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
