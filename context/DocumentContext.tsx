@@ -5,7 +5,7 @@ import { useProfile } from './ProfileContext';
 
 interface DocumentContextType {
   documents: DocumentFile[];
-  addDocument: (file: File, type: DocumentFile['type']) => Promise<void>;
+  addDocument: (file: File, details: { name: string; type: DocumentFile['type'] }) => Promise<void>;
   updateDocument: (docId: number, updates: Partial<DocumentFile>) => Promise<void>;
   deleteDocument: (docId: number) => Promise<void>;
   loading: boolean;
@@ -35,7 +35,8 @@ export const DocumentProvider: React.FC<{ children: ReactNode }> = ({ children }
         const { data: docRecords, error } = await supabase
             .from('documents')
             .select('*')
-            .eq('user_id', userId);
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
 
         if (error) throw error;
         
@@ -59,20 +60,20 @@ export const DocumentProvider: React.FC<{ children: ReactNode }> = ({ children }
     fetchDocuments(profile?.id);
   }, [profile, fetchDocuments]);
   
-  const addDocument = async (file: File, type: DocumentFile['type']) => {
+  const addDocument = async (file: File, details: { name: string; type: DocumentFile['type'] }) => {
     if (!supabase || !profile) {
         console.warn("Supabase not configured. Simulating document add.");
         const newDoc: DocumentFile = {
             id: new Date().getTime(),
             user_id: 'fallback-user',
-            name: file.name,
-            type,
+            name: details.name,
+            type: details.type,
             size: `${(file.size / 1024).toFixed(1)} KB`,
             created_at: new Date().toISOString(),
             visibility: 'private',
             file_path: '',
         };
-        setDocuments(prev => [...prev, newDoc]);
+        setDocuments(prev => [newDoc, ...prev]);
         return;
     }
     
@@ -86,8 +87,8 @@ export const DocumentProvider: React.FC<{ children: ReactNode }> = ({ children }
 
     const newDocPayload = {
         user_id: profile.id,
-        name: file.name,
-        type: type,
+        name: details.name,
+        type: details.type,
         size: `${(file.size / 1024).toFixed(1)} KB`,
         visibility: 'private' as const,
         file_path: filePath,
@@ -102,7 +103,7 @@ export const DocumentProvider: React.FC<{ children: ReactNode }> = ({ children }
     if (insertError) throw insertError;
 
     // Refresh the list to get the new document with its public URL
-    fetchDocuments(profile.id);
+    await fetchDocuments(profile.id);
   }
 
   const updateDocument = async (docId: number, updates: Partial<DocumentFile>) => {
@@ -120,7 +121,7 @@ export const DocumentProvider: React.FC<{ children: ReactNode }> = ({ children }
       
       if (error) throw error;
 
-      setDocuments(docs => docs.map(d => d.id === docId ? { ...data, public_url: d.public_url } : d));
+      setDocuments(docs => docs.map(d => d.id === docId ? { ...d, ...data } : d));
   }
   
   const deleteDocument = async (docId: number) => {
