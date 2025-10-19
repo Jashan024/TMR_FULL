@@ -134,11 +134,23 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated");
+    
+    // If the profile doesn't exist yet in our state, this is likely an INSERT.
+    // We create a base profile to ensure `NOT NULL` constraints are met.
+    // This is crucial for the first-time update, e.g., when only a photo is uploaded.
+    const baseProfile = profile ? {} : {
+        name: '', title: '', industry: '', experience: '0', location: '',
+        bio: '', skills: [], roles: [], certifications: [], portfolio_url: '',
+        photo_url: '', role: 'candidate'
+    };
 
     const updatePayload = {
-        id: user.id,
+        ...baseProfile,
+        ...profile,
         ...profileData,
+        id: user.id,
     };
+
 
     const { error: upsertError } = await supabase
         .from('profiles')
@@ -149,13 +161,10 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         throw upsertError;
     }
 
-    // Optimistically update the local state. This makes the UI feel faster
-    // and avoids potential issues with RLS policies that might block a
-    // subsequent SELECT query. The `onAuthStateChange` listener will eventually
-    // sync the profile if the user reloads or logs back in.
+    // Optimistically update the local state. This makes the UI feel faster.
     const updatedProfile = {
       ...(profile || {}),
-      ...updatePayload,
+      ...updatePayload, // Use updatePayload as it contains the merged data
      } as UserProfile;
 
     setProfile(updatedProfile);
