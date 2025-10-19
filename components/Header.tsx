@@ -1,5 +1,6 @@
 
 
+
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
@@ -52,7 +53,7 @@ const Header: React.FC = () => {
         <>
             <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Find Jobs</NavItem>
             <NavItem to="/messages" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Messages</NavItem>
-            <NavItem to="/documents" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Documents</NavItem>
+            <NavItem to="/documents" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Documents</NavItem>
             <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle}>Public Profile</NavItem>
         </>
     );
@@ -68,7 +69,7 @@ const Header: React.FC = () => {
         <>
             <NavItem to="/jobs" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Find Jobs</NavItem>
             <NavItem to="/messages" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Messages</NavItem>
-            <NavItem to="/documents" isComingSoon baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Documents</NavItem>
+            <NavItem to="/documents" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Documents</NavItem>
             <NavItem to="/profile/me" baseStyle={baseLinkStyle} activeStyle={activeLinkStyle} mobileStyle={mobileLinkStyle} onClick={() => setIsMenuOpen(false)}>Public Profile</NavItem>
         </>
     );
