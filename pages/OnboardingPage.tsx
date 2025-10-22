@@ -199,20 +199,13 @@ const OnboardingPage: React.FC = () => {
             return;
         }
         
-        // Create a clean, unique file path to prevent issues with special characters.
         const fileExt = file.name.split('.').pop();
-        const sanitizedFileName = `profile_${Date.now()}.${fileExt}`;
-        const filePath = `${profile.id}/${sanitizedFileName}`;
+        const filePath = `${profile.id}/profile.${fileExt}`;
 
         try {
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
-                .upload(filePath, file, { 
-                    upsert: true,
-                    // Explicitly set content type, with a fallback for mobile browsers
-                    // that may fail to report the correct MIME type.
-                    contentType: file.type || 'application/octet-stream'
-                });
+                .upload(filePath, file, { upsert: true });
 
             if (uploadError) throw uploadError;
 

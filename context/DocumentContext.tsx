@@ -76,17 +76,11 @@ export const DocumentProvider: React.FC<{ children: ReactNode }> = ({ children }
         return;
     }
     
-    // Sanitize the filename to remove special characters and spaces, which can cause issues on mobile.
-    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const filePath = `${profile.id}/${Date.now()}_${sanitizedFileName}`;
+    const filePath = `${profile.id}/${Date.now()}_${file.name}`;
 
     const { error: uploadError } = await supabase.storage
       .from('documents')
-      .upload(filePath, file, {
-        // Explicitly set content type, with a fallback for mobile browsers
-        // that may fail to report the correct MIME type.
-        contentType: file.type || 'application/octet-stream',
-      });
+      .upload(filePath, file);
 
     if (uploadError) throw uploadError;
 
