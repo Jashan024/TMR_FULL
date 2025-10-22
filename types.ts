@@ -19,7 +19,6 @@ export interface DocumentFile {
   id: number;
   user_id: string;
   name: string;
-  type: 'Resume' | 'Cover Letter' | 'Portfolio';
   size: string;
   created_at: string;
   visibility: 'public' | 'private';

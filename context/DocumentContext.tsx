@@ -5,7 +5,7 @@ import { useProfile } from './ProfileContext';
 
 interface DocumentContextType {
   documents: DocumentFile[];
-  addDocument: (file: File, details: { name: string; type: DocumentFile['type'] }) => Promise<void>;
+  addDocument: (file: File, details: { name: string }) => Promise<void>;
   updateDocument: (docId: number, updates: Partial<DocumentFile>) => Promise<void>;
   deleteDocument: (docId: number) => Promise<void>;
   loading: boolean;
@@ -14,9 +14,9 @@ interface DocumentContextType {
 const DocumentContext = createContext<DocumentContextType | undefined>(undefined);
 
 const fallbackDocuments: DocumentFile[] = [
-    { id: 1, user_id: 'fallback-user', name: 'Resume_Frontend_Engineer.pdf', type: 'Resume', size: '248 KB', created_at: '2023-10-26', visibility: 'public', file_path: '', public_url: '#' },
-    { id: 2, user_id: 'fallback-user', name: 'Cover_Letter_Startup.pdf', type: 'Cover Letter', size: '112 KB', created_at: '2023-10-22', visibility: 'private', file_path: '', public_url: '#' },
-    { id: 3, user_id: 'fallback-user', name: 'Design_Portfolio_2023.pdf', type: 'Portfolio', size: '5.8 MB', created_at: '2023-09-15', visibility: 'public', file_path: '', public_url: '#' },
+    { id: 1, user_id: 'fallback-user', name: 'Resume_Frontend_Engineer.pdf', size: '248 KB', created_at: '2023-10-26', visibility: 'public', file_path: '', public_url: '#' },
+    { id: 2, user_id: 'fallback-user', name: 'Cover_Letter_Startup.pdf', size: '112 KB', created_at: '2023-10-22', visibility: 'private', file_path: '', public_url: '#' },
+    { id: 3, user_id: 'fallback-user', name: 'Design_Portfolio_2023.pdf', size: '5.8 MB', created_at: '2023-09-15', visibility: 'public', file_path: '', public_url: '#' },
 ];
 
 export const DocumentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -60,14 +60,13 @@ export const DocumentProvider: React.FC<{ children: ReactNode }> = ({ children }
     fetchDocuments(profile?.id);
   }, [profile, fetchDocuments]);
   
-  const addDocument = async (file: File, details: { name: string; type: DocumentFile['type'] }) => {
+  const addDocument = async (file: File, details: { name: string }) => {
     if (!supabase || !profile) {
         console.warn("Supabase not configured. Simulating document add.");
         const newDoc: DocumentFile = {
             id: new Date().getTime(),
             user_id: 'fallback-user',
             name: details.name,
-            type: details.type,
             size: `${(file.size / 1024).toFixed(1)} KB`,
             created_at: new Date().toISOString(),
             visibility: 'private',
@@ -88,7 +87,6 @@ export const DocumentProvider: React.FC<{ children: ReactNode }> = ({ children }
     const newDocPayload = {
         user_id: profile.id,
         name: details.name,
-        type: details.type,
         size: `${(file.size / 1024).toFixed(1)} KB`,
         visibility: 'private' as const,
         file_path: filePath,

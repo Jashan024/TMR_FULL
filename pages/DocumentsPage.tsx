@@ -4,7 +4,7 @@ import type { DocumentFile } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
-import { Input, Select } from '../components/Input';
+import { Input } from '../components/Input';
 import ToggleSwitch from '../components/ToggleSwitch';
 import { UploadIcon, DocumentIcon, PencilIcon, TrashIcon, LoaderIcon, EyeIcon, LockClosedIcon } from '../components/Icons';
 
@@ -13,7 +13,6 @@ const UploadForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const { addDocument } = useDocuments();
     const [file, setFile] = useState<File | null>(null);
     const [docName, setDocName] = useState('');
-    const [docType, setDocType] = useState<DocumentFile['type']>('Resume');
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState('');
 
@@ -27,18 +26,34 @@ const UploadForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!file || !docName || !docType) {
-            setError('Please provide a file, name, and type.');
+        if (!file || !docName) {
+            setError('Please provide a file and a name.');
             return;
         }
         setError('');
         setIsUploading(true);
         try {
-            await addDocument(file, { name: docName, type: docType });
+            await addDocument(file, { name: docName });
             onClose();
         } catch (err: any) {
             console.error('Upload failed:', err);
-            setError(err.message || 'Failed to upload document.');
+            let errorMessage = 'An unexpected error occurred during upload. Please try again.';
+
+            // Supabase errors often have a `message` property.
+            if (err && typeof err.message === 'string') {
+                errorMessage = err.message;
+            }
+            // Sometimes the error is nested inside an 'error' object.
+            else if (err && err.error && typeof err.error.message === 'string') {
+                errorMessage = err.error.message;
+            }
+
+            // Check for specific common issues to give better feedback.
+            if (errorMessage.includes('security policy') || errorMessage.includes('permission denied')) {
+                errorMessage = "Upload failed due to security policies. Please ensure permissions are correctly set up in Supabase.";
+            }
+
+            setError(errorMessage);
         } finally {
             setIsUploading(false);
         }
@@ -69,11 +84,6 @@ const UploadForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 </div>
             </div>
             <Input label="Document Name" name="docName" value={docName} onChange={(e) => setDocName(e.target.value)} placeholder="e.g. My Resume (October 2023)" required />
-            <Select label="Document Type" name="docType" value={docType} onChange={(e) => setDocType(e.target.value as DocumentFile['type'])} required>
-                <option value="Resume">Resume</option>
-                <option value="Cover Letter">Cover Letter</option>
-                <option value="Portfolio">Portfolio</option>
-            </Select>
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <div className="flex justify-end space-x-3 pt-2">
                 <Button type="button" variant="secondary" onClick={onClose} disabled={isUploading}>Cancel</Button>
@@ -140,7 +150,7 @@ const DocumentsPage: React.FC = () => {
                                     <div className="ml-0 sm:ml-4 mt-3 sm:mt-0 flex-grow">
                                         <p className="font-semibold text-white">{doc.name}</p>
                                         <p className="text-sm text-gray-400">
-                                            {doc.type} &middot; {doc.size} &middot; Added on {new Date(doc.created_at).toLocaleDateString()}
+                                            {doc.size} &middot; Added on {new Date(doc.created_at).toLocaleDateString()}
                                         </p>
                                     </div>
                                     <div className="flex items-center space-x-4 mt-4 sm:mt-0 w-full sm:w-auto justify-end">
@@ -188,7 +198,7 @@ const DocumentsPage: React.FC = () => {
                         <p className="mb-6">Are you sure you want to permanently delete this document? This action cannot be undone.</p>
                         <div className="p-3 bg-gray-900/60 border border-gray-700 rounded-lg">
                             <p className="font-semibold text-white">{selectedDoc.name}</p>
-                            <p className="text-sm text-gray-400">{selectedDoc.type} &middot; {selectedDoc.size}</p>
+                            <p className="text-sm text-gray-400">{selectedDoc.size}</p>
                         </div>
                         <div className="flex justify-end space-x-3 mt-6">
                             <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
