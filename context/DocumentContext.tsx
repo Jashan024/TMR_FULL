@@ -80,7 +80,9 @@ export const DocumentProvider: React.FC<{ children: ReactNode }> = ({ children }
 
     const { error: uploadError } = await supabase.storage
       .from('documents')
-      .upload(filePath, file);
+      .upload(filePath, file, {
+        contentType: file.type || 'application/octet-stream',
+      });
 
     if (uploadError) throw uploadError;
 

@@ -10,6 +10,7 @@ import Modal from '../components/Modal';
 import { Input, Select, Textarea } from '../components/Input';
 import { UserIcon, BriefcaseIcon, BuildingOfficeIcon, CalendarDaysIcon, MapPinIcon, LinkIcon, TagIcon, AcademicCapIcon, CloseIcon, CameraIcon, UploadIcon, LoaderIcon } from '../components/Icons';
 import { supabase } from '../lib/supabaseClient';
+import LocationAutocompleteInput from '../components/LocationAutocompleteInput';
 
 const ProgressBar: React.FC<{ step: number }> = ({ step }) => {
     const totalSteps = 3;
@@ -204,7 +205,10 @@ const OnboardingPage: React.FC = () => {
         try {
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
-                .upload(filePath, file, { upsert: true });
+                .upload(filePath, file, { 
+                    upsert: true,
+                    contentType: file.type || 'image/jpeg',
+                });
 
             if (uploadError) throw uploadError;
 
@@ -304,7 +308,15 @@ const OnboardingPage: React.FC = () => {
                             {step === 2 && (
                                 <>
                                     <Input label="Years of Experience" name="experience" type="number" value={formData.experience} onChange={handleChange} placeholder="e.g. 8" required icon={<CalendarDaysIcon />} />
-                                    <Input label="Location" name="location" value={formData.location} onChange={handleChange} placeholder="e.g. Remote, USA" required icon={<MapPinIcon />} />
+                                    <LocationAutocompleteInput 
+                                        label="Location" 
+                                        name="location" 
+                                        value={formData.location || ''} 
+                                        onChange={handleChange} 
+                                        placeholder="e.g. Remote, USA" 
+                                        required 
+                                        icon={<MapPinIcon />} 
+                                    />
                                     <Textarea label="Bio" name="bio" value={formData.bio} onChange={handleChange} placeholder="Tell recruiters a little about yourself, your goals, and what you're passionate about." required />
                                 </>
                             )}
