@@ -83,8 +83,9 @@ export const DocumentProvider: React.FC<{ children: ReactNode }> = ({ children }
     const { error: uploadError } = await supabase.storage
       .from('documents')
       .upload(filePath, file, {
-        // Explicitly set content type for better mobile browser compatibility.
-        contentType: file.type,
+        // Explicitly set content type, with a fallback for mobile browsers
+        // that may fail to report the correct MIME type.
+        contentType: file.type || 'application/octet-stream',
       });
 
     if (uploadError) throw uploadError;
