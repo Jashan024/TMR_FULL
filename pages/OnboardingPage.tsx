@@ -207,7 +207,8 @@ const OnboardingPage: React.FC = () => {
                 .from('avatars')
                 .upload(filePath, file, { 
                     upsert: true,
-                    contentType: file.type || 'image/jpeg',
+                    // Explicitly set content type for better mobile browser compatibility.
+                    contentType: file.type 
                 });
 
             if (uploadError) throw uploadError;
