@@ -199,8 +199,10 @@ const OnboardingPage: React.FC = () => {
             return;
         }
         
+        // Create a clean, unique file path to prevent issues with special characters.
         const fileExt = file.name.split('.').pop();
-        const filePath = `${profile.id}/profile.${fileExt}`;
+        const sanitizedFileName = `profile_${Date.now()}.${fileExt}`;
+        const filePath = `${profile.id}/${sanitizedFileName}`;
 
         try {
             const { error: uploadError } = await supabase.storage
