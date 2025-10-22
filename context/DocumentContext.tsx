@@ -19,6 +19,15 @@ const fallbackDocuments: DocumentFile[] = [
     { id: 3, user_id: 'fallback-user', name: 'Design_Portfolio_2023.pdf', size: '5.8 MB', created_at: '2023-09-15', visibility: 'public', file_path: '', public_url: '#' },
 ];
 
+// A simple function to sanitize file names for storage paths
+const sanitizeFileName = (name: string): string => {
+  // Replace spaces with underscores and remove characters that are often problematic in URLs/paths.
+  return name
+    .replace(/\s/g, '_')
+    .replace(/[^a-zA-Z0-9_.-]/g, '');
+};
+
+
 export const DocumentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [documents, setDocuments] = useState<DocumentFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +85,8 @@ export const DocumentProvider: React.FC<{ children: ReactNode }> = ({ children }
         return;
     }
     
-    const filePath = `${profile.id}/${Date.now()}_${file.name}`;
+    const sanitizedName = sanitizeFileName(file.name);
+    const filePath = `${profile.id}/${Date.now()}_${sanitizedName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('documents')
