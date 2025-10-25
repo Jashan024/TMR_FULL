@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
-import { useDocuments } from '../context/DocumentContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { LinkIcon, PencilIcon, EyeIcon, DocumentIcon, ShareIcon, CheckCircleIcon, BriefcaseIcon } from '../components/Icons';
+import { LinkIcon, PencilIcon, ShareIcon, CheckCircleIcon, BriefcaseIcon } from '../components/Icons';
 import { supabase } from '../lib/supabaseClient';
-import type { UserProfile, DocumentFile } from '../types';
+import type { UserProfile } from '../types';
 
 const LoadingSpinner: React.FC = () => (
     <div className="flex justify-center items-center h-full py-20">
@@ -60,11 +59,9 @@ export const PublicProfilePage: React.FC = () => {
 
   // Logged-in user's data from context
   const { session, profile, isProfileCreated, loading: authUserLoading, error: authUserError } = useProfile();
-  const { documents: authUserDocuments } = useDocuments();
   
   // State for publicly fetched profile
   const [publicProfile, setPublicProfile] = useState<UserProfile | null>(null);
-  const [publicDocuments, setPublicDocuments] = useState<DocumentFile[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
   const [showRecruiterGate, setShowRecruiterGate] = useState(false);
@@ -106,22 +103,6 @@ export const PublicProfilePage: React.FC = () => {
                 setShowRecruiterGate(true);
                 return;
             }
-
-            const { data: docRecords, error: docError } = await supabase
-                .from('documents')
-                .select('*')
-                .eq('user_id', id)
-                .eq('visibility', 'public');
-            
-            if (docError) throw docError;
-
-            const enhancedDocs = await Promise.all(
-              (docRecords || []).map(async (doc) => {
-                const { data: urlData } = supabase.storage.from('documents').getPublicUrl(doc.file_path);
-                return { ...doc, public_url: urlData.publicUrl };
-              })
-            );
-            setPublicDocuments(enhancedDocs);
 
         } catch (error: any) {
             setPageError(error.message || 'Failed to load profile.');
@@ -168,9 +149,6 @@ export const PublicProfilePage: React.FC = () => {
   };
   
   const profileToDisplay = isMyProfile ? profile : publicProfile;
-  const documentsToDisplay = isMyProfile 
-    ? authUserDocuments.filter(doc => doc.visibility === 'public') 
-    : publicDocuments;
 
   const isLoading = pageLoading || (isMyProfile && authUserLoading);
 
@@ -249,25 +227,6 @@ export const PublicProfilePage: React.FC = () => {
                       <h2 className="text-2xl font-semibold text-white mb-3">About Me</h2>
                       <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{profileToDisplay.bio}</p>
                  </Card>
-                 
-                {/* Public Documents Section */}
-                {documentsToDisplay.length > 0 && (
-                  <Card className="mb-8">
-                    <h2 className="text-2xl font-semibold text-white mb-4 flex items-center">
-                        <EyeIcon className="w-6 h-6 mr-3 text-cyan-400" />
-                        Public Documents
-                    </h2>
-                    <div className="space-y-3">
-                        {documentsToDisplay.map(doc => (
-                            <a href={doc.public_url || '#'} key={doc.id} target="_blank" rel="noopener noreferrer" className="flex items-center p-3 rounded-lg hover:bg-gray-700/50 transition-colors group">
-                                <DocumentIcon className="w-6 h-6 text-gray-400 group-hover:text-cyan-400" />
-                                <span className="ml-4 font-medium text-gray-200">{doc.name}</span>
-                                <span className="ml-auto text-sm text-gray-500">{doc.size}</span>
-                            </a>
-                        ))}
-                    </div>
-                  </Card>
-                )}
       
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   {/* LEFT COLUMN */}

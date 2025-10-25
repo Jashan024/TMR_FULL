@@ -15,6 +15,22 @@ export interface UserProfile {
   role: 'candidate' | 'recruiter';
 }
 
+export interface SerpApiJob {
+  job_id: string;
+  title: string;
+  company_name: string;
+  location: string;
+  via: string; // The "Apply" link
+  description: string;
+  detected_extensions?: {
+    posted_at?: string;
+    schedule_type?: string;
+    salary?: string;
+  };
+  thumbnail?: string;
+}
+
+// FIX: Added DocumentFile interface to resolve missing type error.
 export interface DocumentFile {
   id: number;
   user_id: string;
@@ -24,12 +40,4 @@ export interface DocumentFile {
   visibility: 'public' | 'private';
   file_path: string;
   public_url?: string;
-}
-
-export interface JobPosting {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  url: string;
 }

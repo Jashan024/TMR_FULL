@@ -2,11 +2,9 @@
 import React from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { ProfileProvider } from './context/ProfileContext';
-import { DocumentProvider } from './context/DocumentContext';
 import LandingPage from './pages/LandingPage';
 import OnboardingPage from './pages/OnboardingPage';
 import { PublicProfilePage } from './pages/PublicProfilePage';
-import DocumentsPage from './pages/DocumentsPage';
 import JobSearchPage from './pages/JobSearchPage';
 import Header from './components/Header';
 import AuthPage from './pages/AuthPage';
@@ -27,7 +25,6 @@ const AppContent: React.FC = () => {
                     <Route path="/auth" element={<AuthPage />} />
                     <Route path="/onboarding" element={<OnboardingPage />} />
                     <Route path="/profile/:userId" element={<PublicProfilePage />} />
-                    <Route path="/documents" element={<DocumentsPage />} />
                     <Route path="/jobs" element={<JobSearchPage />} />
                     <Route path="/candidates" element={<CandidatesPage />} />
                     <Route path="/messages" element={<MessagesPage />} />
@@ -41,9 +38,7 @@ const App: React.FC = () => {
   return (
     <HashRouter>
       <ProfileProvider>
-        <DocumentProvider>
             <AppContent />
-        </DocumentProvider>
       </ProfileProvider>
     </HashRouter>
   );
