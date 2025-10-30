@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@supabase/supabase-js": "latest",
     "axios": "^1.12.2",
     "cors": "^2.8.5",
@@ -17,6 +18,12 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.4"
+=======
+    "react-router-dom": "^7.9.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "@supabase/supabase-js": "latest"
+>>>>>>> ddcb63df18a76fed3b049892bb3661ef66dbbc55
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

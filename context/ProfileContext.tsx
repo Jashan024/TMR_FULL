@@ -42,6 +42,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   
+<<<<<<< HEAD
   // Local storage keys for persistence across refreshes
   const PROFILE_STORAGE_KEY = 'tmr_profile_cache_v1';
   const SESSION_PRIME_DONE = useRef(false);
@@ -61,10 +62,19 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     // If Supabase is not configured, use fallback data and exit.
     if (!supabase) {
         if (!profile) setProfile(fallbackProfile);
+=======
+  const isProfileCreated = !!profile?.name; // Check for a key field like name
+
+  useEffect(() => {
+    // If Supabase is not configured, use fallback data and exit.
+    if (!supabase) {
+        setProfile(fallbackProfile);
+>>>>>>> ddcb63df18a76fed3b049892bb3661ef66dbbc55
         setLoading(false);
         return;
     }
 
+<<<<<<< HEAD
     // 2) Prime the session immediately on mount (prevents "forgotten user" on hard refresh)
     (async () => {
         try {
@@ -92,6 +102,8 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
     })();
 
+=======
+>>>>>>> ddcb63df18a76fed3b049892bb3661ef66dbbc55
     // Set loading to true initially to cover the first session check.
     setLoading(true);
 
@@ -143,16 +155,25 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
                     throw error;
                 }
                 setProfile(data);
+<<<<<<< HEAD
                 try { localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(data)); } catch (_) {}
+=======
+>>>>>>> ddcb63df18a76fed3b049892bb3661ef66dbbc55
             } catch (error) {
                 console.error("Error fetching profile:", error);
                 setError('Failed to fetch profile.');
                 setProfile(null);
+<<<<<<< HEAD
                 try { localStorage.removeItem(PROFILE_STORAGE_KEY); } catch (_) {}
             }
         } else {
             setProfile(null);
             try { localStorage.removeItem(PROFILE_STORAGE_KEY); } catch (_) {}
+=======
+            }
+        } else {
+            setProfile(null);
+>>>>>>> ddcb63df18a76fed3b049892bb3661ef66dbbc55
         }
         // Always set loading to false after processing the session change.
         setLoading(false);
@@ -211,7 +232,10 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
      } as UserProfile;
 
     setProfile(updatedProfile);
+<<<<<<< HEAD
     try { localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updatedProfile)); } catch (_) {}
+=======
+>>>>>>> ddcb63df18a76fed3b049892bb3661ef66dbbc55
     return updatedProfile;
 }, [profile]);
 
@@ -226,7 +250,10 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
     // The onAuthStateChange listener will clear the profile state.
     // We manually navigate to ensure the user is redirected immediately.
+<<<<<<< HEAD
     try { localStorage.removeItem(PROFILE_STORAGE_KEY); } catch (_) {}
+=======
+>>>>>>> ddcb63df18a76fed3b049892bb3661ef66dbbc55
     navigate('/auth');
   }, [navigate]);
 

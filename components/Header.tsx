@@ -37,8 +37,11 @@ const Header: React.FC = () => {
 
     const isRecruiter = profile?.role === 'recruiter';
     const isRecruiterViewingProfile = isRecruiter && location.pathname.startsWith('/profile/');
+<<<<<<< HEAD
     const isViewingPublicProfile = location.pathname.startsWith('/profile/') && location.pathname !== '/profile/me';
     const isLoggedIn = !!profile;
+=======
+>>>>>>> ddcb63df18a76fed3b049892bb3661ef66dbbc55
 
     const handleLogout = async () => {
         await logout();
@@ -86,11 +89,19 @@ const Header: React.FC = () => {
                 </NavLink>
                 
                 <nav className="hidden md:flex items-center space-x-8">
+<<<<<<< HEAD
                     {isViewingPublicProfile ? null : (isRecruiter ? recruiterNav : candidateNav)}
                 </nav>
 
                 <div className="flex items-center space-x-4">
                     {profile && !isViewingPublicProfile && (
+=======
+                    {isRecruiter ? recruiterNav : candidateNav}
+                </nav>
+
+                <div className="flex items-center space-x-4">
+                    {profile && (
+>>>>>>> ddcb63df18a76fed3b049892bb3661ef66dbbc55
                         <div className="hidden md:flex items-center space-x-4">
                             {isRecruiter ? (
                                 <>
@@ -111,6 +122,7 @@ const Header: React.FC = () => {
                             )}
                         </div>
                     )}
+<<<<<<< HEAD
                     {!isViewingPublicProfile && (
                         <div className="md:hidden">
                             <button 
@@ -123,15 +135,33 @@ const Header: React.FC = () => {
                             </button>
                         </div>
                     )}
+=======
+                     <div className="md:hidden">
+                        <button 
+                            onClick={() => setIsMenuOpen(!isMenuOpen)} 
+                            aria-label="Toggle menu" 
+                            className="text-gray-300 hover:text-white focus:outline-none"
+                            aria-expanded={isMenuOpen}
+                        >
+                            {isMenuOpen ? <CloseIcon className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
+                        </button>
+                    </div>
+>>>>>>> ddcb63df18a76fed3b049892bb3661ef66dbbc55
                 </div>
             </div>
 
             {/* Mobile Menu */}
             <div className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${isMenuOpen ? 'max-h-96 border-t border-gray-800' : 'max-h-0'}`}>
                 <nav className="px-6 pb-4 pt-2 flex flex-col space-y-1">
+<<<<<<< HEAD
                     {isViewingPublicProfile ? null : (isRecruiter ? mobileRecruiterNav : mobileCandidateNav)}
                     
                     {profile && !isViewingPublicProfile && (
+=======
+                    {isRecruiter ? mobileRecruiterNav : mobileCandidateNav}
+                    
+                    {profile && (
+>>>>>>> ddcb63df18a76fed3b049892bb3661ef66dbbc55
                         <div className="pt-4 mt-2 border-t border-gray-700">
                             {isRecruiter ? (
                                 <>
