@@ -182,7 +182,7 @@ export const PublicProfilePage: React.FC = () => {
                         </Button>
                       </>
                     ) : (
-                      // Recruiter viewing candidate profile - show Contact button
+                      // Recruiter or anyone viewing candidate profile - show Contact button
                       <div className="relative">
                         <Button onClick={handleContactCandidate} variant="primary" className="px-4 py-2 w-full sm:w-auto">
                           <EnvelopeIcon className="w-4 h-4 mr-2" />

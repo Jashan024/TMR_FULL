@@ -33,6 +33,7 @@ const NavItem: React.FC<{ to: string, children: React.ReactNode, isComingSoon?: 
 const Header: React.FC = () => {
     const { profile, logout } = useProfile();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
     const location = useLocation();
 
     const isRecruiter = profile?.role === 'recruiter';
@@ -40,8 +41,22 @@ const Header: React.FC = () => {
     const isViewingPublicProfile = location.pathname.startsWith('/profile/') && location.pathname !== '/profile/me';
     const isLoggedIn = !!profile;
 
-    const handleLogout = async () => {
-        await logout();
+    const handleLogout = async (e?: React.MouseEvent) => {
+        e?.preventDefault();
+        e?.stopPropagation();
+        
+        if (isLoggingOut) {
+            return; // Prevent multiple clicks
+        }
+        
+        setIsLoggingOut(true);
+        try {
+            await logout();
+        } catch (error) {
+            console.error('Logout failed:', error);
+        } finally {
+            setIsLoggingOut(false);
+        }
     };
     
     const baseLinkStyle = "relative text-gray-300 hover:text-white transition-colors duration-200 py-2";
@@ -99,14 +114,26 @@ const Header: React.FC = () => {
                                             &larr; Back to Candidates
                                         </NavLink>
                                     )}
-                                    <button onClick={handleLogout} className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Log Out</button>
+                                    <button 
+                                        onClick={handleLogout} 
+                                        disabled={isLoggingOut}
+                                        className="text-sm font-medium text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isLoggingOut ? 'Logging out...' : 'Log Out'}
+                                    </button>
                                 </>
                             ) : (
                                 <>
                                     <Avatar photo_url={profile.photo_url} name={profile.name} />
                                     <span className="font-medium text-gray-200">{profile.name}</span>
                                     <span className="text-gray-600">|</span>
-                                    <button onClick={handleLogout} className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Log Out</button>
+                                    <button 
+                                        onClick={handleLogout} 
+                                        disabled={isLoggingOut}
+                                        className="text-sm font-medium text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isLoggingOut ? 'Logging out...' : 'Log Out'}
+                                    </button>
                                 </>
                             )}
                         </div>
@@ -145,10 +172,14 @@ const Header: React.FC = () => {
                                         </NavLink>
                                     )}
                                     <button
-                                        onClick={() => { handleLogout(); setIsMenuOpen(false); }}
-                                        className="w-full text-left block py-2 px-3 text-base text-gray-300 rounded-md bg-gray-800/50 hover:bg-gray-700/80 hover:text-white transition-colors"
+                                        onClick={(e) => { 
+                                            setIsMenuOpen(false); 
+                                            handleLogout(e); 
+                                        }}
+                                        disabled={isLoggingOut}
+                                        className="w-full text-left block py-2 px-3 text-base text-gray-300 rounded-md bg-gray-800/50 hover:bg-gray-700/80 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        Log Out
+                                        {isLoggingOut ? 'Logging out...' : 'Log Out'}
                                     </button>
                                 </>
                             ) : (
@@ -161,10 +192,14 @@ const Header: React.FC = () => {
                                         </div>
                                     </div>
                                     <button
-                                        onClick={() => { handleLogout(); setIsMenuOpen(false); }}
-                                        className="w-full text-left block py-2 px-3 text-base text-gray-300 rounded-md bg-gray-800/50 hover:bg-gray-700/80 hover:text-white transition-colors"
+                                        onClick={(e) => { 
+                                            setIsMenuOpen(false); 
+                                            handleLogout(e); 
+                                        }}
+                                        disabled={isLoggingOut}
+                                        className="w-full text-left block py-2 px-3 text-base text-gray-300 rounded-md bg-gray-800/50 hover:bg-gray-700/80 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        Log Out
+                                        {isLoggingOut ? 'Logging out...' : 'Log Out'}
                                     </button>
                                 </>
                             )}

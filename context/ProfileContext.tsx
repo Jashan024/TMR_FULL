@@ -40,18 +40,19 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const navigate = useNavigate();
   
-  // Local storage keys for persistence across refreshes
+  // Session storage for cache that clears when tab is closed
   const PROFILE_STORAGE_KEY = 'tmr_profile_cache_v1';
   const SESSION_PRIME_DONE = useRef(false);
   
   const isProfileCreated = !!profile?.name; // Check for a key field like name
 
   useEffect(() => {
-    // 1) Attempt fast rehydration from localStorage to avoid UI flashes on refresh
+    // 1) Attempt fast rehydration from sessionStorage to avoid UI flashes on refresh (clears when tab closes)
     try {
-        const cached = localStorage.getItem(PROFILE_STORAGE_KEY);
+        const cached = sessionStorage.getItem(PROFILE_STORAGE_KEY);
         if (cached) {
             const parsed = JSON.parse(cached) as UserProfile;
             setProfile(parsed);
@@ -80,7 +81,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
                         .single();
                     if (!error) {
                         setProfile(data as UserProfile);
-                        try { localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(data)); } catch (_) {}
+                        try { sessionStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(data)); } catch (_) {}
                     }
                 } catch (_) { /* swallow; auth listener below will handle */ }
                 SESSION_PRIME_DONE.current = true;
@@ -143,16 +144,16 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
                     throw error;
                 }
                 setProfile(data);
-                try { localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(data)); } catch (_) {}
+                try { sessionStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(data)); } catch (_) {}
             } catch (error) {
                 console.error("Error fetching profile:", error);
                 setError('Failed to fetch profile.');
                 setProfile(null);
-                try { localStorage.removeItem(PROFILE_STORAGE_KEY); } catch (_) {}
+                try { sessionStorage.removeItem(PROFILE_STORAGE_KEY); } catch (_) {}
             }
         } else {
             setProfile(null);
-            try { localStorage.removeItem(PROFILE_STORAGE_KEY); } catch (_) {}
+            try { sessionStorage.removeItem(PROFILE_STORAGE_KEY); } catch (_) {}
         }
         // Always set loading to false after processing the session change.
         setLoading(false);
@@ -211,24 +212,54 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
      } as UserProfile;
 
     setProfile(updatedProfile);
-    try { localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updatedProfile)); } catch (_) {}
+    try { sessionStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updatedProfile)); } catch (_) {}
     return updatedProfile;
 }, [profile]);
 
   const logout = useCallback(async () => {
-    if (!supabase) {
-      console.warn("Supabase not configured. Cannot log out.");
-    } else {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Error logging out:', error.message);
-      }
+    // Prevent multiple logout calls
+    if (isLoggingOut) {
+      return;
     }
-    // The onAuthStateChange listener will clear the profile state.
-    // We manually navigate to ensure the user is redirected immediately.
-    try { localStorage.removeItem(PROFILE_STORAGE_KEY); } catch (_) {}
-    navigate('/auth');
-  }, [navigate]);
+    
+    setIsLoggingOut(true);
+    
+    try {
+      // Clear session storage first
+      try { 
+        sessionStorage.removeItem(PROFILE_STORAGE_KEY);
+        sessionStorage.clear(); // Clear all session data
+      } catch (_) {}
+      
+      // Sign out from Supabase
+      if (supabase) {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          console.error('Error logging out:', error.message);
+        }
+      }
+      
+      // Clear local state immediately
+      setProfile(null);
+      setSession(null);
+      setError(null);
+      
+      // Use window.location for reliable navigation with hash router
+      // This ensures the navigation always works
+      window.location.href = '/#/auth';
+      
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even on error, try to navigate
+      try {
+        window.location.href = '/#/auth';
+      } catch (_) {
+        navigate('/auth');
+      }
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }, [navigate, isLoggingOut]);
 
   const contextValue = {
     session,
