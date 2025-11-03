@@ -51,11 +51,14 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   useEffect(() => {
     // 1) Attempt fast rehydration from sessionStorage to avoid UI flashes on refresh (clears when tab closes)
+    let cachedProfile: UserProfile | null = null;
     try {
         const cached = sessionStorage.getItem(PROFILE_STORAGE_KEY);
         if (cached) {
-            const parsed = JSON.parse(cached) as UserProfile;
-            setProfile(parsed);
+            cachedProfile = JSON.parse(cached) as UserProfile;
+            setProfile(cachedProfile);
+            // On refresh with cache, clear loading immediately for instant UI
+            setLoading(false);
         }
     } catch (_) { /* ignore cache errors */ }
 
@@ -72,29 +75,49 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
             const { data: { session: initialSession } } = await supabase.auth.getSession();
             setSession(initialSession);
             if (initialSession && !SESSION_PRIME_DONE.current) {
-                // Fetch profile once during initial prime
+                // If we have cached profile and it matches session, we're done
+                if (cachedProfile && cachedProfile.id === initialSession.user.id) {
+                    console.log('Cache matches session - profile already restored');
+                    SESSION_PRIME_DONE.current = true;
+                    setLoading(false);
+                    return;
+                }
+                
+                // Fetch profile once during initial prime (if no cache or mismatch)
                 try {
                     const { data, error } = await supabase
                         .from('profiles')
                         .select('*')
                         .eq('id', initialSession.user.id)
                         .single();
-                    if (!error) {
+                    if (!error && data) {
                         setProfile(data as UserProfile);
                         try { sessionStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(data)); } catch (_) {}
+                        setLoading(false);
+                    } else {
+                        // Profile not found - clear loading
+                        setLoading(false);
                     }
-                } catch (_) { /* swallow; auth listener below will handle */ }
+                } catch (_) { 
+                    // On error, clear loading - auth listener will handle
+                    setLoading(false);
+                }
                 SESSION_PRIME_DONE.current = true;
+            } else if (!initialSession) {
+                // No session - clear loading
+                setLoading(false);
             }
-        } catch (_) { /* ignore */ }
-        finally {
-            // Keep loading until auth listener resolves; prevents flicker
-            // We won't set loading false here; the listener will do it deterministically
+        } catch (_) { 
+            // On error, clear loading
+            setLoading(false);
         }
     })();
 
-    // Set loading to true initially to cover the first session check.
-    setLoading(true);
+    // Set loading to true initially ONLY if we don't have cached profile
+    // If we have cache, loading is already false from above
+    if (!cachedProfile) {
+        setLoading(true);
+    }
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
         setSession(newSession);
@@ -163,6 +186,17 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         authListener?.subscription.unsubscribe();
     };
   }, []);
+
+  // Safety timeout: Clear loading if stuck after 3 seconds
+  useEffect(() => {
+    if (loading) {
+      const timeout = setTimeout(() => {
+        console.log('Safety timeout: Clearing stuck loading state');
+        setLoading(false);
+      }, 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [loading]);
   
   const updateProfile = useCallback(async (profileData: Partial<UserProfile>): Promise<UserProfile> => {
     if (!supabase) {
