@@ -116,7 +116,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Set loading to true initially ONLY if we don't have cached profile
     // If we have cache, loading is already false from above
     if (!cachedProfile) {
-        setLoading(true);
+    setLoading(true);
     }
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
@@ -267,11 +267,11 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
       
       // Sign out from Supabase
       if (supabase) {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-          console.error('Error logging out:', error.message);
-        }
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error logging out:', error.message);
       }
+    }
       
       // Clear local state immediately
       setProfile(null);
@@ -288,7 +288,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
       try {
         window.location.href = '/#/auth';
       } catch (_) {
-        navigate('/auth');
+    navigate('/auth');
       }
     } finally {
       setIsLoggingOut(false);

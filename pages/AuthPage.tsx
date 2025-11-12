@@ -22,6 +22,13 @@ const AuthPage: React.FC = () => {
     const initialView = (queryParams.get('view') as AuthView) || 'signup';
 
     const [view, setView] = useState<AuthView>(initialView);
+
+    // Force signin view for recruiters (signup disabled)
+    useEffect(() => {
+        if (role === 'recruiter' && view === 'signup') {
+            setView('signin');
+        }
+    }, [role, view]);
     const [formLoading, setFormLoading] = useState(false);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
@@ -89,6 +96,14 @@ const AuthPage: React.FC = () => {
         
         try {
             if (view === 'signup') {
+                // Prevent signup for recruiters
+                if (role === 'recruiter') {
+                    setError('Sign up is not available for recruiters. Please sign in instead.');
+                    setFormLoading(false);
+                    setView('signin');
+                    return;
+                }
+                
                 const { data, error } = await supabase.auth.signUp({ 
                     email, 
                     password, 
@@ -172,7 +187,7 @@ const AuthPage: React.FC = () => {
                                 </div>
                             </button>
                             <button 
-                                onClick={() => setRole('recruiter')}
+                                onClick={() => { setRole('recruiter'); setView('signin'); }}
                                 className="w-full text-left p-6 bg-gray-700/50 hover:bg-gray-700 border border-gray-600 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                             >
                                 <div className="flex items-center">
@@ -188,11 +203,13 @@ const AuthPage: React.FC = () => {
                 ) : (
                     <Card className="p-0 overflow-hidden">
                         {view !== 'forgot_password' && (
-                            <div className="flex">
-                                <button onClick={() => { setView('signup'); setError(''); setMessage(''); }} className={tabButtonClasses('signup')}>
-                                    Sign Up
-                                </button>
-                                <button onClick={() => { setView('signin'); setError(''); setMessage(''); }} className={tabButtonClasses('signin')}>
+                            <div className={`flex ${role === 'recruiter' ? 'justify-center' : ''}`}>
+                                {role !== 'recruiter' && (
+                                    <button onClick={() => { setView('signup'); setError(''); setMessage(''); }} className={tabButtonClasses('signup')}>
+                                        Sign Up
+                                    </button>
+                                )}
+                                <button onClick={() => { setView('signin'); setError(''); setMessage(''); }} className={role === 'recruiter' ? tabButtonClasses('signin').replace('w-1/2', 'w-48') : tabButtonClasses('signin')}>
                                     Sign In
                                 </button>
                             </div>
@@ -206,10 +223,10 @@ const AuthPage: React.FC = () => {
                             {error && <p className="mb-4 text-center text-red-400">{error}</p>}
                             {message && <p className="mb-4 text-center text-green-400">{message}</p>}
 
-                            {view === 'signup' && (
+                            {view === 'signup' && role !== 'recruiter' && (
                                 <form onSubmit={handleSubmit} className="space-y-6">
                                     <h2 className="text-2xl font-bold text-center text-white">
-                                        {role === 'recruiter' ? 'Create Recruiter Account' : 'Create Your Account'}
+                                        Create Your Account
                                     </h2>
                                     <Input label="Full Name" name="name" type="text" placeholder="Alex Doe" required icon={<UserIcon />} disabled={isLoading} />
                                     <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} disabled={isLoading} />
@@ -223,6 +240,9 @@ const AuthPage: React.FC = () => {
                             {view === 'signin' && (
                                 <form onSubmit={handleSubmit} className="space-y-6">
                                     <h2 className="text-2xl font-bold text-center text-white">Welcome Back</h2>
+                                    {role === 'recruiter' && (
+                                        <p className="text-center text-sm text-gray-400 mb-2">Recruiter accounts are invitation-only. Please sign in with your existing credentials.</p>
+                                    )}
                                     <Input label="Email Address" name="email" type="email" placeholder="you@example.com" required icon={<EnvelopeIcon />} disabled={isLoading} />
                                     <Input label="Password" name="password" type="password" placeholder="••••••••" required icon={<LockClosedIcon />} disabled={isLoading} />
                                     <div className="text-right">
