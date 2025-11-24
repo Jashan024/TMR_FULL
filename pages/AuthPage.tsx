@@ -205,9 +205,9 @@ const AuthPage: React.FC = () => {
                         {view !== 'forgot_password' && (
                             <div className={`flex ${role === 'recruiter' ? 'justify-center' : ''}`}>
                                 {role !== 'recruiter' && (
-                                    <button onClick={() => { setView('signup'); setError(''); setMessage(''); }} className={tabButtonClasses('signup')}>
-                                        Sign Up
-                                    </button>
+                                <button onClick={() => { setView('signup'); setError(''); setMessage(''); }} className={tabButtonClasses('signup')}>
+                                    Sign Up
+                                </button>
                                 )}
                                 <button onClick={() => { setView('signin'); setError(''); setMessage(''); }} className={role === 'recruiter' ? tabButtonClasses('signin').replace('w-1/2', 'w-48') : tabButtonClasses('signin')}>
                                     Sign In
@@ -222,7 +222,7 @@ const AuthPage: React.FC = () => {
 
                             {error && <p className="mb-4 text-center text-red-400">{error}</p>}
                             {message && <p className="mb-4 text-center text-green-400">{message}</p>}
-
+                            
                             {view === 'signup' && role !== 'recruiter' && (
                                 <form onSubmit={handleSubmit} className="space-y-6">
                                     <h2 className="text-2xl font-bold text-center text-white">
