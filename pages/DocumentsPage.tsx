@@ -14,26 +14,113 @@ const UploadForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const [file, setFile] = useState<File | null>(null);
     const [docName, setDocName] = useState('');
     const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     const [error, setError] = useState('');
+    const [isDragging, setIsDragging] = useState(false);
+
+    // File validation constants
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const ALLOWED_FILE_TYPES = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/plain',
+        'image/jpeg',
+        'image/png',
+        'image/jpg'
+    ];
+
+    const validateFile = (selectedFile: File): string | null => {
+        // Check file size
+        if (selectedFile.size > MAX_FILE_SIZE) {
+            return `File size exceeds 10MB limit. Your file is ${(selectedFile.size / (1024 * 1024)).toFixed(2)}MB.`;
+        }
+
+        // Check file type (more lenient - check extension if MIME type not recognized)
+        const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
+        const isValidMimeType = ALLOWED_FILE_TYPES.includes(selectedFile.type);
+        const isValidExtension = fileExtension && ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'jpg', 'jpeg', 'png'].includes(fileExtension);
+        
+        if (!isValidMimeType && !isValidExtension) {
+            return 'File type not supported. Please upload PDF, DOC, DOCX, XLS, XLSX, TXT, JPG, PNG, or JPEG files.';
+        }
+
+        return null;
+    };
+
+    const handleFileSelect = (selectedFile: File) => {
+        const validationError = validateFile(selectedFile);
+        if (validationError) {
+            setError(validationError);
+            setFile(null);
+            return;
+        }
+
+        setError('');
+        setFile(selectedFile);
+        // Pre-fill name without extension, but allow editing
+        const nameWithoutExt = selectedFile.name.replace(/\.[^/.]+$/, "");
+        setDocName(nameWithoutExt);
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            const selectedFile = e.target.files[0];
-            setFile(selectedFile);
-            setDocName(selectedFile.name.replace(/\.[^/.]+$/, "")); // Pre-fill name without extension
+            handleFileSelect(e.target.files[0]);
+        }
+    };
+
+    const handleDragEvents = (e: React.DragEvent, dragging: boolean) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(dragging);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        handleDragEvents(e, false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFileSelect(e.dataTransfer.files[0]);
         }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!file || !docName) {
+        if (!file || !docName.trim()) {
             setError('Please provide a file and a name.');
             return;
         }
+
+        // Re-validate before upload
+        const validationError = validateFile(file);
+        if (validationError) {
+            setError(validationError);
+            return;
+        }
+
         setError('');
         setIsUploading(true);
+        setUploadProgress(0);
+
         try {
-            await addDocument(file, { name: docName });
+            // Simulate progress for better UX (actual upload progress would require Supabase client-side tracking)
+            const progressInterval = setInterval(() => {
+                setUploadProgress(prev => {
+                    if (prev >= 90) {
+                        clearInterval(progressInterval);
+                        return 90;
+                    }
+                    return prev + 10;
+                });
+            }, 200);
+
+            await addDocument(file, { name: docName.trim() });
+            
+            clearInterval(progressInterval);
+            setUploadProgress(100);
+            
+            // Small delay to show completion
+            await new Promise(resolve => setTimeout(resolve, 300));
             onClose();
         } catch (err: any) {
             console.error('Upload failed:', err);
@@ -51,12 +138,27 @@ const UploadForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             // Check for specific common issues to give better feedback.
             if (errorMessage.includes('security policy') || errorMessage.includes('permission denied')) {
                 errorMessage = "Upload failed due to security policies. Please ensure permissions are correctly set up in Supabase.";
+            } else if (errorMessage.includes('network') || errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch')) {
+                errorMessage = "Network error. Please check your internet connection and try again.";
+            } else if (errorMessage.includes('413') || errorMessage.includes('too large')) {
+                errorMessage = "File is too large. Maximum file size is 10MB.";
             }
 
             setError(errorMessage);
+            setUploadProgress(0);
         } finally {
             setIsUploading(false);
         }
+    };
+
+    const dragDropClasses = isDragging 
+        ? 'border-cyan-500 bg-gray-800/80 scale-[1.02]' 
+        : 'border-gray-600 hover:border-gray-500';
+
+    const formatFileSize = (bytes: number): string => {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
     };
 
     return (
@@ -65,29 +167,92 @@ const UploadForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <label htmlFor="file-upload" className="block text-sm font-medium text-gray-300 mb-2">
                     Document File
                 </label>
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600 border-dashed rounded-md">
-                    <div className="space-y-1 text-center">
-                        <UploadIcon className="mx-auto h-12 w-12 text-gray-500" />
-                        <div className="flex text-sm text-gray-400">
-                            <label htmlFor="file-upload" className="relative cursor-pointer bg-gray-800 rounded-md font-medium text-cyan-400 hover:text-cyan-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-cyan-500">
-                                <span>Upload a file</span>
-                                <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} />
+                <div 
+                    className={`mt-1 flex justify-center px-4 sm:px-6 pt-5 pb-6 border-2 border-dashed rounded-md transition-all duration-300 ${dragDropClasses}`}
+                    onDragEnter={(e) => handleDragEvents(e, true)}
+                    onDragLeave={(e) => handleDragEvents(e, false)}
+                    onDragOver={(e) => handleDragEvents(e, true)}
+                    onDrop={handleDrop}
+                >
+                    <div className="space-y-2 text-center w-full">
+                        <UploadIcon className={`mx-auto h-10 w-10 sm:h-12 sm:w-12 ${isDragging ? 'text-cyan-400' : 'text-gray-500'} transition-colors`} />
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-1 text-sm text-gray-400">
+                            <label 
+                                htmlFor="file-upload" 
+                                className="relative cursor-pointer bg-gray-800 rounded-md font-medium text-cyan-400 hover:text-cyan-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-cyan-500 px-3 py-1.5 touch-manipulation"
+                            >
+                                <span>Choose a file</span>
+                                <input 
+                                    id="file-upload" 
+                                    name="file-upload" 
+                                    type="file" 
+                                    className="sr-only" 
+                                    onChange={handleFileChange}
+                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,image/jpeg,image/png"
+                                    disabled={isUploading}
+                                />
                             </label>
-                            <p className="pl-1">or drag and drop</p>
+                            <span className="hidden sm:inline">or</span>
+                            <p className="text-xs sm:text-sm">drag and drop here</p>
                         </div>
                         {file ? (
-                            <p className="text-xs text-gray-300">{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>
+                            <div className="mt-3 p-3 bg-gray-900/60 rounded-lg border border-gray-700">
+                                <p className="text-sm font-medium text-white break-words">{file.name}</p>
+                                <p className="text-xs text-gray-400 mt-1">{formatFileSize(file.size)}</p>
+                            </div>
                         ) : (
-                            <p className="text-xs text-gray-500">PDF, DOCX, etc. up to 10MB</p>
+                            <p className="text-xs text-gray-500 mt-2 px-2">
+                                Supported: PDF, DOC, DOCX, XLS, XLSX, TXT, JPG, PNG (Max 10MB)
+                            </p>
                         )}
                     </div>
                 </div>
             </div>
-            <Input label="Document Name" name="docName" value={docName} onChange={(e) => setDocName(e.target.value)} placeholder="e.g. My Resume (October 2023)" required />
-            {error && <p className="text-red-400 text-sm">{error}</p>}
-            <div className="flex justify-end space-x-3 pt-2">
-                <Button type="button" variant="secondary" onClick={onClose} disabled={isUploading}>Cancel</Button>
-                <Button type="submit" variant="primary" loading={isUploading} disabled={!file || isUploading}>
+            <Input 
+                label="Document Name" 
+                name="docName" 
+                value={docName} 
+                onChange={(e) => setDocName(e.target.value)} 
+                placeholder="e.g. My Resume (October 2023)" 
+                required 
+                disabled={isUploading}
+            />
+            {isUploading && uploadProgress > 0 && (
+                <div className="space-y-2">
+                    <div className="flex justify-between text-xs text-gray-400">
+                        <span>Uploading...</span>
+                        <span>{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div 
+                            className="bg-gradient-to-r from-cyan-500 to-blue-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${uploadProgress}%` }}
+                        ></div>
+                    </div>
+                </div>
+            )}
+            {error && (
+                <div className="p-3 bg-red-900/20 border border-red-700/50 rounded-lg">
+                    <p className="text-red-400 text-sm">{error}</p>
+                </div>
+            )}
+            <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
+                <Button 
+                    type="button" 
+                    variant="secondary" 
+                    onClick={onClose} 
+                    disabled={isUploading}
+                    className="w-full sm:w-auto"
+                >
+                    Cancel
+                </Button>
+                <Button 
+                    type="submit" 
+                    variant="primary" 
+                    loading={isUploading} 
+                    disabled={!file || !docName.trim() || isUploading}
+                    className="w-full sm:w-auto"
+                >
                     {isUploading ? 'Uploading...' : 'Upload'}
                 </Button>
             </div>
