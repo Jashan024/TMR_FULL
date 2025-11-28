@@ -102,27 +102,47 @@ const UploadForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         setIsUploading(true);
         setUploadProgress(0);
 
-        try {
-            // Simulate progress for better UX (actual upload progress would require Supabase client-side tracking)
-            const progressInterval = setInterval(() => {
-                setUploadProgress(prev => {
-                    if (prev >= 90) {
-                        clearInterval(progressInterval);
-                        return 90;
-                    }
-                    return prev + 10;
-                });
-            }, 200);
+        // Progress simulation with timeout protection
+        let progressInterval: NodeJS.Timeout | null = null;
+        let uploadTimeout: NodeJS.Timeout | null = null;
 
+        try {
+            // Simulate progress for better UX - goes to 70% then waits for actual upload
+            progressInterval = setInterval(() => {
+                setUploadProgress(prev => {
+                    if (prev >= 70) {
+                        if (progressInterval) clearInterval(progressInterval);
+                        return 70;
+                    }
+                    return prev + 15;
+                });
+            }, 300);
+
+            // Set timeout for mobile devices (30 seconds max)
+            uploadTimeout = setTimeout(() => {
+                if (progressInterval) clearInterval(progressInterval);
+                setError('Upload is taking longer than expected. Please check your connection and try again.');
+                setIsUploading(false);
+                setUploadProgress(0);
+            }, 30000);
+
+            // Perform actual upload
             await addDocument(file, { name: docName.trim() });
             
-            clearInterval(progressInterval);
+            // Clear intervals and timeouts
+            if (progressInterval) clearInterval(progressInterval);
+            if (uploadTimeout) clearTimeout(uploadTimeout);
+            
+            // Complete progress animation to 100%
             setUploadProgress(100);
             
-            // Small delay to show completion
-            await new Promise(resolve => setTimeout(resolve, 300));
+            // Small delay to show completion before closing
+            await new Promise(resolve => setTimeout(resolve, 500));
             onClose();
         } catch (err: any) {
+            // Clean up intervals and timeouts on error
+            if (progressInterval) clearInterval(progressInterval);
+            if (uploadTimeout) clearTimeout(uploadTimeout);
             console.error('Upload failed:', err);
             let errorMessage = 'An unexpected error occurred during upload. Please try again.';
 
@@ -138,10 +158,12 @@ const UploadForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             // Check for specific common issues to give better feedback.
             if (errorMessage.includes('security policy') || errorMessage.includes('permission denied')) {
                 errorMessage = "Upload failed due to security policies. Please ensure permissions are correctly set up in Supabase.";
-            } else if (errorMessage.includes('network') || errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch')) {
-                errorMessage = "Network error. Please check your internet connection and try again.";
+            } else if (errorMessage.includes('network') || errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('timeout')) {
+                errorMessage = "Network error. Please check your internet connection and try again. Mobile uploads may take longer on slower connections.";
             } else if (errorMessage.includes('413') || errorMessage.includes('too large')) {
                 errorMessage = "File is too large. Maximum file size is 10MB.";
+            } else if (errorMessage.includes('abort') || errorMessage.includes('cancelled')) {
+                errorMessage = "Upload was cancelled. Please try again.";
             }
 
             setError(errorMessage);
