@@ -6,7 +6,7 @@ import Button from '../components/Button';
 import Modal from '../components/Modal';
 import { Input } from '../components/Input';
 import ToggleSwitch from '../components/ToggleSwitch';
-import { UploadIcon, DocumentIcon, PencilIcon, TrashIcon, LoaderIcon, EyeIcon, LockClosedIcon } from '../components/Icons';
+import { UploadIcon, DocumentIcon, PencilIcon, TrashIcon, LoaderIcon, EyeIcon, LockClosedIcon, DownloadIcon } from '../components/Icons';
 
 // --- Upload Modal Form ---
 const UploadForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
@@ -14,135 +14,28 @@ const UploadForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const [file, setFile] = useState<File | null>(null);
     const [docName, setDocName] = useState('');
     const [isUploading, setIsUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
     const [error, setError] = useState('');
-    const [isDragging, setIsDragging] = useState(false);
-
-    // File validation constants
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-    const ALLOWED_FILE_TYPES = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'text/plain',
-        'image/jpeg',
-        'image/png',
-        'image/jpg'
-    ];
-
-    const validateFile = (selectedFile: File): string | null => {
-        // Check file size
-        if (selectedFile.size > MAX_FILE_SIZE) {
-            return `File size exceeds 10MB limit. Your file is ${(selectedFile.size / (1024 * 1024)).toFixed(2)}MB.`;
-        }
-
-        // Check file type (more lenient - check extension if MIME type not recognized)
-        const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
-        const isValidMimeType = ALLOWED_FILE_TYPES.includes(selectedFile.type);
-        const isValidExtension = fileExtension && ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'jpg', 'jpeg', 'png'].includes(fileExtension);
-        
-        if (!isValidMimeType && !isValidExtension) {
-            return 'File type not supported. Please upload PDF, DOC, DOCX, XLS, XLSX, TXT, JPG, PNG, or JPEG files.';
-        }
-
-        return null;
-    };
-
-    const handleFileSelect = (selectedFile: File) => {
-        const validationError = validateFile(selectedFile);
-        if (validationError) {
-            setError(validationError);
-            setFile(null);
-            return;
-        }
-
-        setError('');
-        setFile(selectedFile);
-        // Pre-fill name without extension, but allow editing
-        const nameWithoutExt = selectedFile.name.replace(/\.[^/.]+$/, "");
-        setDocName(nameWithoutExt);
-    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            handleFileSelect(e.target.files[0]);
-        }
-    };
-
-    const handleDragEvents = (e: React.DragEvent, dragging: boolean) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsDragging(dragging);
-    };
-
-    const handleDrop = (e: React.DragEvent) => {
-        handleDragEvents(e, false);
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            handleFileSelect(e.dataTransfer.files[0]);
+            const selectedFile = e.target.files[0];
+            setFile(selectedFile);
+            setDocName(selectedFile.name.replace(/\.[^/.]+$/, "")); // Pre-fill name without extension
         }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!file || !docName.trim()) {
+        if (!file || !docName) {
             setError('Please provide a file and a name.');
             return;
         }
-
-        // Re-validate before upload
-        const validationError = validateFile(file);
-        if (validationError) {
-            setError(validationError);
-            return;
-        }
-
         setError('');
         setIsUploading(true);
-        setUploadProgress(0);
-
-        // Progress simulation with timeout protection
-        let progressInterval: NodeJS.Timeout | null = null;
-        let uploadTimeout: NodeJS.Timeout | null = null;
-
         try {
-            // Simulate progress for better UX - goes to 70% then waits for actual upload
-            progressInterval = setInterval(() => {
-                setUploadProgress(prev => {
-                    if (prev >= 70) {
-                        if (progressInterval) clearInterval(progressInterval);
-                        return 70;
-                    }
-                    return prev + 15;
-                });
-            }, 300);
-
-            // Set timeout for mobile devices (30 seconds max)
-            uploadTimeout = setTimeout(() => {
-                if (progressInterval) clearInterval(progressInterval);
-                setError('Upload is taking longer than expected. Please check your connection and try again.');
-                setIsUploading(false);
-                setUploadProgress(0);
-            }, 30000);
-
-            // Perform actual upload
-            await addDocument(file, { name: docName.trim() });
-            
-            // Clear intervals and timeouts
-            if (progressInterval) clearInterval(progressInterval);
-            if (uploadTimeout) clearTimeout(uploadTimeout);
-            
-            // Complete progress animation to 100%
-            setUploadProgress(100);
-            
-            // Small delay to show completion before closing
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await addDocument(file, { name: docName });
             onClose();
         } catch (err: any) {
-            // Clean up intervals and timeouts on error
-            if (progressInterval) clearInterval(progressInterval);
-            if (uploadTimeout) clearTimeout(uploadTimeout);
             console.error('Upload failed:', err);
             let errorMessage = 'An unexpected error occurred during upload. Please try again.';
 
@@ -158,29 +51,12 @@ const UploadForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             // Check for specific common issues to give better feedback.
             if (errorMessage.includes('security policy') || errorMessage.includes('permission denied')) {
                 errorMessage = "Upload failed due to security policies. Please ensure permissions are correctly set up in Supabase.";
-            } else if (errorMessage.includes('network') || errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('timeout')) {
-                errorMessage = "Network error. Please check your internet connection and try again. Mobile uploads may take longer on slower connections.";
-            } else if (errorMessage.includes('413') || errorMessage.includes('too large')) {
-                errorMessage = "File is too large. Maximum file size is 10MB.";
-            } else if (errorMessage.includes('abort') || errorMessage.includes('cancelled')) {
-                errorMessage = "Upload was cancelled. Please try again.";
             }
 
             setError(errorMessage);
-            setUploadProgress(0);
         } finally {
             setIsUploading(false);
         }
-    };
-
-    const dragDropClasses = isDragging 
-        ? 'border-cyan-500 bg-gray-800/80 scale-[1.02]' 
-        : 'border-gray-600 hover:border-gray-500';
-
-    const formatFileSize = (bytes: number): string => {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
     };
 
     return (
@@ -189,93 +65,82 @@ const UploadForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <label htmlFor="file-upload" className="block text-sm font-medium text-gray-300 mb-2">
                     Document File
                 </label>
-                <div 
-                    className={`mt-1 flex justify-center px-4 sm:px-6 pt-5 pb-6 border-2 border-dashed rounded-md transition-all duration-300 ${dragDropClasses}`}
-                    onDragEnter={(e) => handleDragEvents(e, true)}
-                    onDragLeave={(e) => handleDragEvents(e, false)}
-                    onDragOver={(e) => handleDragEvents(e, true)}
-                    onDrop={handleDrop}
-                >
-                    <div className="space-y-2 text-center w-full">
-                        <UploadIcon className={`mx-auto h-10 w-10 sm:h-12 sm:w-12 ${isDragging ? 'text-cyan-400' : 'text-gray-500'} transition-colors`} />
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-1 text-sm text-gray-400">
-                            <label 
-                                htmlFor="file-upload" 
-                                className="relative cursor-pointer bg-gray-800 rounded-md font-medium text-cyan-400 hover:text-cyan-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-cyan-500 px-3 py-1.5 touch-manipulation"
-                            >
-                                <span>Choose a file</span>
+                <div className="mt-1 flex justify-center px-4 sm:px-6 pt-6 pb-8 border-2 border-gray-600 border-dashed rounded-lg active:border-cyan-500 active:bg-gray-800/50 transition-colors">
+                    <div className="space-y-2 text-center">
+                        <UploadIcon className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-500" />
+                        <div className="text-sm text-gray-400">
+                            <label htmlFor="file-upload" className="relative cursor-pointer bg-gray-800 rounded-md font-medium text-cyan-400 hover:text-cyan-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-cyan-500 px-3 py-2 inline-block">
+                                <span>Tap to select a file</span>
                                 <input 
                                     id="file-upload" 
                                     name="file-upload" 
                                     type="file" 
+                                    accept=".pdf,.doc,.docx,.txt,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                                     className="sr-only" 
-                                    onChange={handleFileChange}
-                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,image/jpeg,image/png"
-                                    disabled={isUploading}
+                                    onChange={handleFileChange} 
                                 />
                             </label>
-                            <span className="hidden sm:inline">or</span>
-                            <p className="text-xs sm:text-sm">drag and drop here</p>
                         </div>
                         {file ? (
-                            <div className="mt-3 p-3 bg-gray-900/60 rounded-lg border border-gray-700">
-                                <p className="text-sm font-medium text-white break-words">{file.name}</p>
-                                <p className="text-xs text-gray-400 mt-1">{formatFileSize(file.size)}</p>
-                            </div>
+                            <p className="text-sm text-gray-300 break-all px-2">{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>
                         ) : (
-                            <p className="text-xs text-gray-500 mt-2 px-2">
-                                Supported: PDF, DOC, DOCX, XLS, XLSX, TXT, JPG, PNG (Max 10MB)
-                            </p>
+                            <p className="text-xs text-gray-500">PDF, DOCX, TXT up to 10MB</p>
                         )}
                     </div>
                 </div>
             </div>
+            <Input label="Document Name" name="docName" value={docName} onChange={(e) => setDocName(e.target.value)} placeholder="e.g. My Resume (October 2023)" required />
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+            <div className="flex justify-end space-x-3 pt-2">
+                <Button type="button" variant="secondary" onClick={onClose} disabled={isUploading}>Cancel</Button>
+                <Button type="submit" variant="primary" loading={isUploading} disabled={!file || isUploading}>
+                    {isUploading ? 'Uploading...' : 'Upload'}
+                </Button>
+            </div>
+        </form>
+    );
+};
+
+// --- Edit Name Modal Form ---
+const EditNameForm: React.FC<{ doc: DocumentFile; onClose: () => void; onSave: (docId: number, newName: string) => Promise<void> }> = ({ doc, onClose, onSave }) => {
+    const [newName, setNewName] = useState(doc.name);
+    const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newName.trim()) {
+            setError('Please enter a document name.');
+            return;
+        }
+        setError('');
+        setIsSaving(true);
+        try {
+            await onSave(doc.id, newName.trim());
+            onClose();
+        } catch (err: any) {
+            console.error('Failed to update name:', err);
+            setError(err.message || 'Failed to update document name.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
             <Input 
                 label="Document Name" 
                 name="docName" 
-                value={docName} 
-                onChange={(e) => setDocName(e.target.value)} 
+                value={newName} 
+                onChange={(e) => setNewName(e.target.value)} 
                 placeholder="e.g. My Resume (October 2023)" 
                 required 
-                disabled={isUploading}
             />
-            {isUploading && uploadProgress > 0 && (
-                <div className="space-y-2">
-                    <div className="flex justify-between text-xs text-gray-400">
-                        <span>Uploading...</span>
-                        <span>{uploadProgress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-700 rounded-full h-2">
-                        <div 
-                            className="bg-gradient-to-r from-cyan-500 to-blue-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${uploadProgress}%` }}
-                        ></div>
-                    </div>
-                </div>
-            )}
-            {error && (
-                <div className="p-3 bg-red-900/20 border border-red-700/50 rounded-lg">
-                    <p className="text-red-400 text-sm">{error}</p>
-                </div>
-            )}
-            <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
-                <Button 
-                    type="button" 
-                    variant="secondary" 
-                    onClick={onClose} 
-                    disabled={isUploading}
-                    className="w-full sm:w-auto"
-                >
-                    Cancel
-                </Button>
-                <Button 
-                    type="submit" 
-                    variant="primary" 
-                    loading={isUploading} 
-                    disabled={!file || !docName.trim() || isUploading}
-                    className="w-full sm:w-auto"
-                >
-                    {isUploading ? 'Uploading...' : 'Upload'}
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+            <div className="flex justify-end space-x-3 pt-2">
+                <Button type="button" variant="secondary" onClick={onClose} disabled={isSaving}>Cancel</Button>
+                <Button type="submit" variant="primary" loading={isSaving} disabled={!newName.trim() || isSaving}>
+                    {isSaving ? 'Saving...' : 'Save'}
                 </Button>
             </div>
         </form>
@@ -286,6 +151,7 @@ const UploadForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 const DocumentsPage: React.FC = () => {
     const { documents, updateDocument, deleteDocument, loading } = useDocuments();
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState<DocumentFile | null>(null);
 
@@ -308,6 +174,20 @@ const DocumentsPage: React.FC = () => {
             console.error('Failed to delete document:', error);
             alert('Could not delete document. Please try again.');
         }
+    };
+
+    const handleEditName = async (docId: number, newName: string) => {
+        await updateDocument(docId, { name: newName });
+    };
+
+    const openEditModal = (doc: DocumentFile) => {
+        setSelectedDoc(doc);
+        setIsEditModalOpen(true);
+    };
+
+    const closeEditModal = () => {
+        setIsEditModalOpen(false);
+        setSelectedDoc(null);
     };
     
     return (
@@ -332,15 +212,21 @@ const DocumentsPage: React.FC = () => {
                     ) : documents.length > 0 ? (
                         <div className="space-y-4">
                             {documents.map(doc => (
-                                <div key={doc.id} className="flex flex-col sm:flex-row items-start sm:items-center p-4 rounded-lg bg-gray-900/50 border border-gray-700/80 hover:border-gray-600 transition-colors">
-                                    <DocumentIcon className="w-8 h-8 text-cyan-400 flex-shrink-0" />
-                                    <div className="ml-0 sm:ml-4 mt-3 sm:mt-0 flex-grow">
-                                        <p className="font-semibold text-white">{doc.name}</p>
-                                        <p className="text-sm text-gray-400">
-                                            {doc.size} &middot; Added on {new Date(doc.created_at).toLocaleDateString()}
-                                        </p>
+                                <div key={doc.id} className="p-4 rounded-lg bg-gray-900/50 border border-gray-700/80 hover:border-gray-600 transition-colors">
+                                    {/* Top row: Icon + Name */}
+                                    <div className="flex items-start">
+                                        <DocumentIcon className="w-8 h-8 text-cyan-400 flex-shrink-0" />
+                                        <div className="ml-3 flex-grow min-w-0">
+                                            <p className="font-semibold text-white break-words">{doc.name}</p>
+                                            <p className="text-sm text-gray-400">
+                                                {doc.size} &middot; {new Date(doc.created_at).toLocaleDateString()}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center space-x-4 mt-4 sm:mt-0 w-full sm:w-auto justify-end">
+                                    
+                                    {/* Bottom row: Actions - optimized for mobile touch */}
+                                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-700/50">
+                                        {/* Visibility toggle */}
                                         <div className="flex items-center space-x-2" title={doc.visibility === 'public' ? 'Visible on your public profile' : 'Private to you'}>
                                             {doc.visibility === 'public' ? <EyeIcon className="w-5 h-5 text-green-400" /> : <LockClosedIcon className="w-5 h-5 text-gray-400" />}
                                             <ToggleSwitch
@@ -348,18 +234,48 @@ const DocumentsPage: React.FC = () => {
                                                 checked={doc.visibility === 'public'}
                                                 onChange={(isChecked) => handleVisibilityChange(doc, isChecked)}
                                             />
+                                            <span className="text-xs text-gray-500 hidden sm:inline">
+                                                {doc.visibility === 'public' ? 'Public' : 'Private'}
+                                            </span>
                                         </div>
-                                        <button onClick={() => { alert('Editing name is coming soon!') }} className="text-gray-400 hover:text-white transition" title="Edit Name (soon)">
-                                            <PencilIcon className="w-5 h-5"/>
-                                        </button>
-                                        <button 
-                                            onClick={() => {
-                                                setSelectedDoc(doc);
-                                                setIsDeleteModalOpen(true);
-                                            }}
-                                            className="text-gray-400 hover:text-red-400 transition" title="Delete Document">
-                                            <TrashIcon className="w-5 h-5"/>
-                                        </button>
+                                        
+                                        {/* Action buttons - larger touch targets for mobile */}
+                                        <div className="flex items-center space-x-1">
+                                            <a 
+                                                href={doc.public_url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="p-2.5 text-gray-400 hover:text-cyan-400 active:text-cyan-300 transition rounded-lg hover:bg-gray-800 active:bg-gray-700" 
+                                                title="View Document"
+                                            >
+                                                <EyeIcon className="w-5 h-5"/>
+                                            </a>
+                                            <a 
+                                                href={doc.public_url} 
+                                                download
+                                                className="p-2.5 text-gray-400 hover:text-cyan-400 active:text-cyan-300 transition rounded-lg hover:bg-gray-800 active:bg-gray-700" 
+                                                title="Download Document"
+                                            >
+                                                <DownloadIcon className="w-5 h-5"/>
+                                            </a>
+                                            <button 
+                                                onClick={() => openEditModal(doc)} 
+                                                className="p-2.5 text-gray-400 hover:text-white active:text-gray-200 transition rounded-lg hover:bg-gray-800 active:bg-gray-700" 
+                                                title="Edit Name"
+                                            >
+                                                <PencilIcon className="w-5 h-5"/>
+                                            </button>
+                                            <button 
+                                                onClick={() => {
+                                                    setSelectedDoc(doc);
+                                                    setIsDeleteModalOpen(true);
+                                                }}
+                                                className="p-2.5 text-gray-400 hover:text-red-400 active:text-red-300 transition rounded-lg hover:bg-gray-800 active:bg-gray-700" 
+                                                title="Delete Document"
+                                            >
+                                                <TrashIcon className="w-5 h-5"/>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -368,7 +284,7 @@ const DocumentsPage: React.FC = () => {
                         <div className="text-center py-16">
                             <DocumentIcon className="w-16 h-16 mx-auto text-gray-600" />
                             <h3 className="mt-4 text-xl font-semibold text-white">No Documents Yet</h3>
-                            <p className="mt-2 text-gray-400">Click "Upload Document" to add your first file.</p>
+                            <p className="mt-2 text-gray-400">Tap "Upload Document" to add your first file.</p>
                         </div>
                     )}
                 </Card>
@@ -392,6 +308,12 @@ const DocumentsPage: React.FC = () => {
                             <Button variant="primary" onClick={handleDelete} className="bg-red-600 hover:bg-red-500 focus:ring-red-500">Delete</Button>
                         </div>
                     </div>
+                )}
+            </Modal>
+
+            <Modal isOpen={isEditModalOpen} onClose={closeEditModal} title="Edit Document Name">
+                {selectedDoc && (
+                    <EditNameForm doc={selectedDoc} onClose={closeEditModal} onSave={handleEditName} />
                 )}
             </Modal>
         </>

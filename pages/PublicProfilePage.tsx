@@ -3,9 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { LinkIcon, PencilIcon, ShareIcon, CheckCircleIcon, EnvelopeIcon } from '../components/Icons';
+import { LinkIcon, PencilIcon, ShareIcon, CheckCircleIcon, EnvelopeIcon, DocumentIcon, EyeIcon, DownloadIcon } from '../components/Icons';
 import { supabase } from '../lib/supabaseClient';
-import type { UserProfile } from '../types';
+import type { UserProfile, DocumentFile } from '../types';
 
 const LoadingSpinner: React.FC = () => (
     <div className="flex justify-center items-center h-full py-20">
@@ -31,6 +31,10 @@ export const PublicProfilePage: React.FC = () => {
   // State for share button
   const [copied, setCopied] = useState(false);
   
+  // State for public documents
+  const [publicDocuments, setPublicDocuments] = useState<DocumentFile[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  
   // Ref to track if we've fetched this profile to prevent infinite loops
   const fetchedProfileId = useRef<string | null>(null);
   
@@ -44,6 +48,36 @@ export const PublicProfilePage: React.FC = () => {
       setPageError(null);
       fetchedProfileId.current = null;
     }
+
+    const fetchPublicDocuments = async (profileId: string) => {
+        if (!supabase) return;
+        
+        setDocumentsLoading(true);
+        try {
+            const { data: docRecords, error } = await supabase
+                .from('documents')
+                .select('*')
+                .eq('user_id', profileId)
+                .eq('visibility', 'public')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            
+            // Enhance documents with their public URLs
+            const enhancedDocs = await Promise.all(
+                (docRecords || []).map(async (doc) => {
+                    const { data: urlData } = supabase!.storage.from('documents').getPublicUrl(doc.file_path);
+                    return { ...doc, public_url: urlData.publicUrl };
+                })
+            );
+            
+            setPublicDocuments(enhancedDocs);
+        } catch (error) {
+            console.error('Error fetching public documents:', error);
+        } finally {
+            setDocumentsLoading(false);
+        }
+    };
 
     const fetchPublicProfile = async (id: string) => {
         console.log('Starting to fetch public profile for ID:', id);
@@ -75,6 +109,9 @@ export const PublicProfilePage: React.FC = () => {
             console.log('Public profile fetched successfully:', profileData);
             setPublicProfile(profileData);
             setPageLoading(false);
+            
+            // Fetch public documents for this profile
+            fetchPublicDocuments(id);
 
         } catch (error: any) {
             console.error('Error fetching public profile:', error);
@@ -94,6 +131,9 @@ export const PublicProfilePage: React.FC = () => {
                 navigate('/onboarding');
             } else if (authUserError) {
                 setPageError(authUserError);
+            } else if (profile?.id) {
+                // Fetch public documents for own profile
+                fetchPublicDocuments(profile.id);
             }
         }
     } else if (cleanUserId && cleanUserId !== 'me') {
@@ -273,6 +313,51 @@ export const PublicProfilePage: React.FC = () => {
                             </span>
                           )) : <p className="text-gray-400 text-sm">No certifications listed.</p>}
                         </div>
+                      </Card>
+                      
+                      {/* Documents Section */}
+                      <Card>
+                        <h2 className="text-xl font-semibold text-white mb-4">Documents</h2>
+                        {documentsLoading ? (
+                          <div className="flex justify-center py-4">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-400"></div>
+                          </div>
+                        ) : publicDocuments.length > 0 ? (
+                          <div className="space-y-3">
+                            {publicDocuments.map(doc => (
+                              <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-700/80">
+                                <div className="flex items-center min-w-0">
+                                  <DocumentIcon className="w-5 h-5 text-cyan-400 flex-shrink-0" />
+                                  <div className="ml-3 min-w-0">
+                                    <p className="font-medium text-white truncate">{doc.name}</p>
+                                    <p className="text-xs text-gray-400">{doc.size}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
+                                  <a 
+                                    href={doc.public_url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="p-2 text-gray-400 hover:text-cyan-400 transition-colors"
+                                    title="View Document"
+                                  >
+                                    <EyeIcon className="w-5 h-5" />
+                                  </a>
+                                  <a 
+                                    href={doc.public_url} 
+                                    download
+                                    className="p-2 text-gray-400 hover:text-cyan-400 transition-colors"
+                                    title="Download Document"
+                                  >
+                                    <DownloadIcon className="w-5 h-5" />
+                                  </a>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-gray-400 text-sm">No public documents available.</p>
+                        )}
                       </Card>
                   </div>
                 </div>
