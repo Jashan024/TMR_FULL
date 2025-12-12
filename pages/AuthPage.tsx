@@ -152,12 +152,14 @@ const AuthPage: React.FC = () => {
         }
     };
 
-    const tabButtonClasses = (tabName: 'signin' | 'signup') => 
-        `w-1/2 py-3 text-center font-semibold transition-colors duration-300 rounded-t-lg ${
-            view === tabName 
-                ? 'text-white bg-gray-800/80' 
-                : 'text-gray-400 bg-gray-900/50 hover:bg-gray-800/60'
+    const tabButtonClasses = (tabName: 'signin' | 'signup') => {
+        const isActive = view === tabName;
+        return `w-1/2 py-3 text-center font-semibold transition-all duration-300 rounded-t-lg cursor-pointer ${
+            isActive 
+                ? 'text-white bg-gray-800/80 shadow-inner' 
+                : 'text-gray-400 bg-gray-900/50 hover:bg-gray-800/60 hover:text-gray-300'
         }`;
+    };
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden">
@@ -205,11 +207,33 @@ const AuthPage: React.FC = () => {
                         {view !== 'forgot_password' && (
                             <div className={`flex ${role === 'recruiter' ? 'justify-center' : ''}`}>
                                 {role !== 'recruiter' && (
-                                    <button onClick={() => { setView('signup'); setError(''); setMessage(''); }} className={tabButtonClasses('signup')}>
+                                    <button 
+                                        type="button"
+                                        onClick={(e) => { 
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setView('signup'); 
+                                            setError(''); 
+                                            setMessage(''); 
+                                        }} 
+                                        className={tabButtonClasses('signup')}
+                                        aria-pressed={view === 'signup'}
+                                    >
                                         Sign Up
                                     </button>
                                 )}
-                                <button onClick={() => { setView('signin'); setError(''); setMessage(''); }} className={role === 'recruiter' ? tabButtonClasses('signin').replace('w-1/2', 'w-48') : tabButtonClasses('signin')}>
+                                <button 
+                                    type="button"
+                                    onClick={(e) => { 
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setView('signin'); 
+                                        setError(''); 
+                                        setMessage(''); 
+                                    }} 
+                                    className={role === 'recruiter' ? tabButtonClasses('signin').replace('w-1/2', 'w-48') : tabButtonClasses('signin')}
+                                    aria-pressed={view === 'signin'}
+                                >
                                     Sign In
                                 </button>
                             </div>
